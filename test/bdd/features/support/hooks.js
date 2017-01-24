@@ -5,7 +5,7 @@ var Promise = Devebot.require('bluebird');
 var lodash = Devebot.require('lodash');
 
 var debug = Devebot.require('debug');
-var debuglog = debug('devebotBridgeNodemailer:test:bdd:hooks');
+var debuglog = debug('devebot:co:rabbitmq:test:bdd:hooks');
 
 var globalHooks = function () {
 

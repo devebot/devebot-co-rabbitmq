@@ -10,7 +10,7 @@ var Promise = Devebot.require('bluebird');
 var lodash = Devebot.require('lodash');
 
 var debug = Devebot.require('debug');
-var debuglog = debug('devebotBridgeNodemailer:test:bdd:world');
+var debuglog = debug('devebot:co:rabbitmq:test:bdd:world');
 
 var app = require('../../../app/index.js');
 

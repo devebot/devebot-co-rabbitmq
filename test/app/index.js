@@ -3,7 +3,7 @@
 var app = require('devebot').launchApplication({
   appRootPath: __dirname
 }, [], [
-  '../../index.js'
+  { name: 'devebot-co-rabbitmq', path: '../../index.js' }
 ]);
 
 if (require.main === module) app.server.start();
