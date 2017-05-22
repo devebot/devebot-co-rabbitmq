@@ -27,7 +27,7 @@ var Service = function(params) {
   });
 
   var arr = [];
-  for(var i=0; i<1000; i++) arr.push(i);
+  for(var i=0; i<50; i++) arr.push(i);
 
   handler.ready().then(function() {
     arr.forEach(function(count) {

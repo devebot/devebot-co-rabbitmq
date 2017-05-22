@@ -23,11 +23,11 @@
   },
   "homepage": "https://github.com/devebot/devebot-co-rabbitmq#readme",
   "peerDependencies": {
-    "devebot": "^0.1.24"
+    "devebot": "^0.1.23"
   },
   "dependencies": {
     "amqplib": "^0.5.1",
-    "devebot": "^0.1.24"
+    "devebot": "^0.1.23"
   },
   "devDependencies": {
     "chai": "^3.5.0",
