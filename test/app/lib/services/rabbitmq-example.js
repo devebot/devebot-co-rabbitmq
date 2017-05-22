@@ -23,7 +23,7 @@ var Service = function(params) {
 
   handler.consume(function(message, done) {
     console.log('==@ Received message: %s', message);
-    done(null);
+    done();
   });
 
   var arr = [];
