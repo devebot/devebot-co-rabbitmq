@@ -7,7 +7,9 @@ module.exports = {
           exchangeType: 'direct',
           exchange: 'sample-exchange',
           routingKey: 'sample',
-          durable: true
+          queue: 'sample-queue',
+          durable: true,
+          noAck: false
         }
       }
     }

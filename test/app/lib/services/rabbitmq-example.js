@@ -21,11 +21,27 @@ var Service = function(params) {
 
   var handler = params.rabbitmqWrapper.open();
 
-  handler.consume(function(error, message) {
+  handler.consume(function(message, done) {
     console.log('==@ Received message: %s', message);
+    done(null);
   });
 
-  handler.publish({ code: 1, msg: 'Hello world' });
+  var arr = [];
+  for(var i=0; i<1000; i++) arr.push(i);
+
+  handler.ready().then(function() {
+    arr.forEach(function(count) {
+      handler.publish({ code: count, msg: 'Hello world (forEach)' });
+    })
+  });
+
+  setTimeout(function() {
+    Promise.mapSeries(arr, function(count) {
+      return handler.publish({ code: count, msg: 'Hello world (mapSeries)' });
+    }).then(function() {
+      console.log('=============== Done ==================');
+    });
+  }, 7000);
 
   debuglog.isEnabled && debuglog(' - constructor end!');
 };
