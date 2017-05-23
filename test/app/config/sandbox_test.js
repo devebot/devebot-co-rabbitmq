@@ -10,7 +10,7 @@ module.exports = {
           queue: 'sample-queue',
           durable: true,
           noAck: false,
-          managedConsumer: true
+          promisedConsumer: false
         }
       }
     }
