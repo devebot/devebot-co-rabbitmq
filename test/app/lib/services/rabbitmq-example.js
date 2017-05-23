@@ -29,7 +29,7 @@ var Service = function(params) {
   var arr = [];
   for(var i=0; i<50; i++) arr.push(i);
 
-  handler.ready().then(function() {
+  handler.prepare().then(function() {
     arr.forEach(function(count) {
       handler.publish({ code: count, msg: 'Hello world (forEach)' });
     })
