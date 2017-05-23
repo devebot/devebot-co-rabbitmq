@@ -9,8 +9,7 @@ module.exports = {
           routingKey: 'sample',
           queue: 'sample-queue',
           durable: true,
-          noAck: false,
-          promisedConsumer: false
+          noAck: false
         }
       }
     }
