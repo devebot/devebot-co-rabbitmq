@@ -1,5 +1,7 @@
 'use strict';
 
+var Devebot = require('devebot');
+var Promise = Devebot.require('bluebird');
 var assert = require('chai').assert;
 var expect = require('chai').expect;
 var util = require('util');
@@ -10,6 +12,12 @@ var checkSkip = function(name) {
 	if (process.env.TDD_EXEC && process.env.TDD_EXEC.indexOf(name) < 0) {
 		this.skip();
 	}
+}
+
+var generateRange = function(min, max) {
+	var range = [];
+	for(var i=min; i<max; i++) range.push(i);
+	return range;
 }
 
 describe('RabbitmqHandler:', function() {
@@ -28,7 +36,8 @@ describe('RabbitmqHandler:', function() {
 			routingKey: 'sample',
 			queue: 'sample-queue',
 			durable: true,
-			noAck: false
+			noAck: false,
+			consumerTag: 'Testing-Consumer'
 		});
 
 		before(function() {
@@ -36,7 +45,9 @@ describe('RabbitmqHandler:', function() {
 		});
 
 		beforeEach(function(done) {
-			done();
+			handler.prepare().then(function() {
+				done();
+			});
 		});
 
 		afterEach(function(done) {
@@ -46,24 +57,47 @@ describe('RabbitmqHandler:', function() {
 			});
 		});
 
-		it('test 1', function(done) {
+		it('preserve the order of elements', function(done) {
+			var index = 0;
 			handler.consume(function(message, end) {
-				console.log('==@ Received message 1: %s', message);
+				message = JSON.parse(message);
+				assert(message.code === index++);
 				end();
-				done();
+				if (index >= 10) done();
 			});
-			handler.publish({ code: 1, msg: 'Hello world' });
-			// setTimeout(done, 1000);
+			var arr = generateRange(0, 10);
+			arr.forEach(function(count) {
+				handler.publish({ code: count, msg: 'Hello world' });
+			});
+			// Promise.mapSeries(arr, function(count) {
+			// 	return handler.publish({ code: count, msg: 'Hello world' });
+			// });
 		});
 
-		it('test 2', function(done) {
+		it('push elements to queue massively', function(done) {
+			var max = 5000;
+			var idx = generateRange(0, max);
+			var n0to9 = generateRange(0, 10);
+			var count = 0;
 			handler.consume(function(message, end) {
-				console.log('==@ Received message 2: %s', message);
+				message = JSON.parse(message);
+				var pos = idx.indexOf(message.code);
+				if (pos >= 0) idx.splice(pos, 1);
 				end();
-				done();
+				count++;
+				if (count >= max * 10) {
+					assert(idx.length === 0);
+					done();
+				}
+			}).then(function() {
+				var arr = generateRange(0, max);
+				Promise.reduce(arr, function(state, n) {
+					return Promise.each(n0to9, function(k) {
+						handler.publish({ code: (10*n + k), msg: 'Hello world' });
+					}).delay(1);
+				}, {});
 			});
-			handler.publish({ code: 2, msg: 'Hello world' });
-			// setTimeout(done, 1000);
+			this.timeout(60*max);
 		});
 	});
 });
