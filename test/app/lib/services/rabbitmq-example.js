@@ -22,7 +22,7 @@ var Service = function(params) {
   var handler = params.rabbitmqWrapper.open();
 
   handler.consume(function(message, info, done) {
-    console.log('==@ Received message: %s', message);
+    console.log('==@ Received message: %s, info: %s', message, info);
     done();
   });
 
@@ -31,13 +31,19 @@ var Service = function(params) {
 
   handler.prepare().then(function() {
     arr.forEach(function(count) {
-      handler.publish({ code: count, msg: 'Hello world (forEach)' });
+      handler.publish({ code: count, msg: 'Hello world (forEach)' }).then(function(result) {
+        console.log('publish() - result: %s', JSON.stringify(result));
+        return result;
+      });
     })
   });
 
   setTimeout(function() {
     Promise.mapSeries(arr, function(count) {
-      return handler.publish({ code: count, msg: 'Hello world (mapSeries)' });
+      return handler.publish({ code: count, msg: 'Hello world (mapSeries)' }).then(function(result) {
+        console.log('publish() - result: %s', JSON.stringify(result));
+        return result;
+      });
     }).then(function() {
       console.log('=============== Done ==================');
     });

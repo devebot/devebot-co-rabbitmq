@@ -131,11 +131,7 @@ describe('RabbitmqHandler:', function() {
 			Promise.mapSeries(arr, function(count) {
 				var randobj = generateObject(fields);
 				randobj.code = count;
-				return handler.publish(randobj).delay(1).then(function() {
-
-				}).catch(function() {
-
-				});
+				return handler.publish(randobj).delay(1);
 			});
 		});
 	});
