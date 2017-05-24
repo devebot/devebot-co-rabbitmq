@@ -79,10 +79,10 @@ describe('RabbitmqHandler:', function() {
 
 		it('preserve the order of elements', function(done) {
 			var index = 0;
-			handler.consume(function(message, end) {
+			handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				assert(message.code === index++);
-				end();
+				finish();
 				if (index >= 10) done();
 			});
 			var arr = generateRange(0, 10);
@@ -96,11 +96,11 @@ describe('RabbitmqHandler:', function() {
 			var idx = generateRange(0, max);
 			var n0to9 = generateRange(0, 10);
 			var count = 0;
-			handler.consume(function(message, end) {
+			handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				var pos = idx.indexOf(message.code);
 				if (pos >= 0) idx.splice(pos, 1);
-				end();
+				finish();
 				count++;
 				if (count >= max * 10) {
 					assert(idx.length === 0);
@@ -121,10 +121,10 @@ describe('RabbitmqHandler:', function() {
 			var total = 10;
 			var index = 0;
 			var fields = generateFields(1000);
-			handler.consume(function(message, end) {
+			handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				assert(message.code === index++);
-				end();
+				finish();
 				if (index >= total) done();
 			});
 			var arr = generateRange(0, total);

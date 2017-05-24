@@ -21,7 +21,7 @@ var Service = function(params) {
 
   var handler = params.rabbitmqWrapper.open();
 
-  handler.consume(function(message, done) {
+  handler.consume(function(message, info, done) {
     console.log('==@ Received message: %s', message);
     done();
   });
