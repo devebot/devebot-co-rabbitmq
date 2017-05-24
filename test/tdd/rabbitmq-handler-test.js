@@ -2,8 +2,10 @@
 
 var Devebot = require('devebot');
 var Promise = Devebot.require('bluebird');
+var lodash = Devebot.require('lodash');
 var assert = require('chai').assert;
 var expect = require('chai').expect;
+var faker = require('faker');
 var util = require('util');
 var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test');
 var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
@@ -18,6 +20,24 @@ var generateRange = function(min, max) {
 	var range = [];
 	for(var i=min; i<max; i++) range.push(i);
 	return range;
+}
+
+var generateFields = function(num) {
+	return generateRange(0, num).map(function(index) {
+		return {
+			name: 'field_' + index,
+			type: 'string'
+		}
+	});
+}
+
+var generateObject = function(fields) {
+	var obj = {};
+	fields = fields || {};
+	fields.forEach(function(field) {
+		obj[field.name] = faker.lorem.sentence();
+	});
+	return obj;
 }
 
 describe('RabbitmqHandler:', function() {
@@ -69,9 +89,6 @@ describe('RabbitmqHandler:', function() {
 			arr.forEach(function(count) {
 				handler.publish({ code: count, msg: 'Hello world' });
 			});
-			// Promise.mapSeries(arr, function(count) {
-			// 	return handler.publish({ code: count, msg: 'Hello world' });
-			// });
 		});
 
 		it('push elements to queue massively', function(done) {
@@ -98,6 +115,28 @@ describe('RabbitmqHandler:', function() {
 				}, {});
 			});
 			this.timeout(60*max);
+		});
+
+		it('push large elements to queue', function(done) {
+			var total = 10;
+			var index = 0;
+			var fields = generateFields(1000);
+			handler.consume(function(message, end) {
+				message = JSON.parse(message);
+				assert(message.code === index++);
+				end();
+				if (index >= total) done();
+			});
+			var arr = generateRange(0, total);
+			Promise.mapSeries(arr, function(count) {
+				var randobj = generateObject(fields);
+				randobj.code = count;
+				return handler.publish(randobj).delay(1).then(function() {
+
+				}).catch(function() {
+
+				});
+			});
 		});
 	});
 });
