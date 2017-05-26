@@ -1,5 +1,6 @@
 'use strict';
 
+var Loadsync = require('loadsync');
 var Devebot = require('devebot');
 var Promise = Devebot.require('bluebird');
 var lodash = Devebot.require('lodash');
@@ -65,7 +66,13 @@ describe('rabbitmq-recover:', function() {
 		});
 
 		beforeEach(function(done) {
-			handler.prepare().then(function() {
+			Promise.resolve().then(function() {
+				return handler.prepare();
+			}).then(function() {
+				return handler.purgeChain();
+			}).then(function() {
+				return handler.purgeTrash();
+			}).then(function() {
 				done();
 			});
 		});
@@ -77,7 +84,7 @@ describe('rabbitmq-recover:', function() {
 			});
 		});
 
-		it('push large elements to queue', function(done) {
+		it('filter the failed processing data to trash (recycle-bin)', function(done) {
 			var total = 1000;
 			var index = 0;
 			handler.consume(function(message, info, finish) {
@@ -89,12 +96,61 @@ describe('rabbitmq-recover:', function() {
 				}
 				if (++index >= (total + 3*10)) {
 					setTimeout(function() {
-						handler.countQueueMessages().then(function(messageCount) {
+						handler.countChainMessages().then(function(messageCount) {
 							if (messageCount == 0) done();
 						});
 					}, 100);
 				}
 			});
+			var arr = generateRange(0, total);
+			Promise.mapSeries(arr, function(count) {
+				return handler.publish({ code: count, msg: 'Hello world' });
+			});
+			this.timeout(4000);
+		});
+
+		it('assure the total of recovered items in trash (recycle-bin)', function(done) {
+			var total = 1000;
+			var index = 0;
+			var loadsync = new Loadsync([{
+				name: 'testsync',
+				cards: ['consume', 'recycle']
+			}]);
+
+			var code1 = [11, 21, 31, 41, 51, 61, 71, 81, 91, 99];
+			handler.consume(function(message, info, finish) {
+				message = JSON.parse(message);
+				if (code1.indexOf(message.code) < 0) {
+					finish();
+				} else {
+					finish('error');
+				}
+				if (++index >= (total + 3*10)) {
+					handler.countChainMessages().then(function(messageCount) {
+						assert.equal(messageCount, 0, 'Chain should be empty');
+						loadsync.check('consume', 'testsync');
+					});
+				}
+			});
+
+			var code2 = [];
+			handler.recycle(function(message, info, finish) {
+				message = JSON.parse(message);
+				code2.push(message.code);
+				if (code2.length >= 10) {
+					handler.countTrashMessages().then(function(messageCount) {
+						assert.equal(messageCount, 0, 'Trash should be empty');
+						loadsync.check('recycle', 'testsync');
+					});
+				}
+				finish();
+			});
+
+			loadsync.ready(function(info) {
+				assert.sameMembers(code1, code2, 'There are exactly ' + code1.length + ' failed items');
+				setTimeout(done, 100);
+			}, 'testsync');
+
 			var arr = generateRange(0, total);
 			Promise.mapSeries(arr, function(count) {
 				return handler.publish({ code: count, msg: 'Hello world' });
