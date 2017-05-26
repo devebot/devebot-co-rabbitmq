@@ -10,7 +10,15 @@ module.exports = {
           queue: 'sample-queue',
           durable: true,
           noAck: false,
-          prefetch: 2
+          prefetch: 2,
+          recycler: {
+            queue: 'sample-trash',
+            durable: true,
+            noAck: false,
+            prefetch: 1,
+            redeliveredCountName: 'x-redelivered-count',
+            redeliveredLimit: 3,
+          }
         }
       }
     },
@@ -26,8 +34,7 @@ module.exports = {
           noAck: false,
           prefetch: 10,
           recycler: {
-            retryCount: 3,
-            queueName: 'sample-garbage-queue',
+            queue: 'sample-export-trash',
             durable: true,
             noAck: false,
             prefetch: 10

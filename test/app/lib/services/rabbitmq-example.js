@@ -23,10 +23,15 @@ var Service = function(params) {
 
   var handler = params.rabbitmqWrapper.open();
 
-  handler.consume(function(message, info, done) {
+  var count = 0;
+  handler.consume(function(message, info, finish) {
     console.log('==@ Received message: %s, info: %s', message, JSON.stringify(info));
     message = JSON.parse(message);
-    done();
+    if ([11, 21, 31, 41, 51, 61, 71, 81, 91, 99].indexOf(message.code) < 0) {
+      finish();
+    } else {
+      finish('error');
+    }
   });
 
   var arr = [];
