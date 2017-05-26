@@ -19,15 +19,18 @@ var Service = function(params) {
 
   debuglog.isEnabled && debuglog(' - NOTICE: This is a testing program');
 
+  var exporter = params.rabbitmqExporter.open();
+
   var handler = params.rabbitmqWrapper.open();
 
   handler.consume(function(message, info, done) {
-    console.log('==@ Received message: %s, info: %s', message, info);
+    console.log('==@ Received message: %s, info: %s', message, JSON.stringify(info));
+    message = JSON.parse(message);
     done();
   });
 
   var arr = [];
-  for(var i=0; i<10; i++) arr.push(i);
+  for(var i=0; i<100; i++) arr.push(i);
 
   handler.prepare().then(function() {
     arr.forEach(function(count) {
@@ -72,6 +75,9 @@ Service.argumentSchema = {
       "type": "object"
     },
     "rabbitmqWrapper": {
+      "type": "object"
+    },
+    "rabbitmqExporter": {
       "type": "object"
     }
   }
