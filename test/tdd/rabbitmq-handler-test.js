@@ -56,8 +56,7 @@ describe('RabbitmqHandler:', function() {
 			routingKey: 'sample',
 			queue: 'sample-queue',
 			durable: true,
-			noAck: false,
-			consumerTag: 'Testing-Consumer'
+			noAck: false
 		});
 
 		before(function() {
@@ -65,7 +64,9 @@ describe('RabbitmqHandler:', function() {
 		});
 
 		beforeEach(function(done) {
-			handler.prepare().then(function() {
+			Promise.all([
+				handler.prepare(), handler.purgeChain(), handler.purgeTrash()
+			]).then(function() {
 				done();
 			});
 		});

@@ -66,13 +66,9 @@ describe('rabbitmq-recover:', function() {
 		});
 
 		beforeEach(function(done) {
-			Promise.resolve().then(function() {
-				return handler.prepare();
-			}).then(function() {
-				return handler.purgeChain();
-			}).then(function() {
-				return handler.purgeTrash();
-			}).then(function() {
+			Promise.all([
+				handler.prepare(), handler.purgeChain(), handler.purgeTrash()
+			]).then(function() {
 				done();
 			});
 		});
@@ -95,11 +91,10 @@ describe('rabbitmq-recover:', function() {
 					finish('error');
 				}
 				if (++index >= (total + 3*10)) {
-					setTimeout(function() {
-						handler.countChainMessages().then(function(messageCount) {
-							if (messageCount == 0) done();
-						});
-					}, 100);
+					handler.countChainMessages().then(function(messageCount) {
+						assert.equal(messageCount, 0, 'Chain should be empty');
+						done();
+					});
 				}
 			});
 			var arr = generateRange(0, total);
@@ -155,6 +150,7 @@ describe('rabbitmq-recover:', function() {
 			Promise.mapSeries(arr, function(count) {
 				return handler.publish({ code: count, msg: 'Hello world' });
 			});
+
 			this.timeout(4000);
 		});
 	});
