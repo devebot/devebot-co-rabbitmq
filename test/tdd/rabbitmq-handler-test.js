@@ -65,7 +65,7 @@ describe('RabbitmqHandler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.prepare(), handler.purgeChain(), handler.purgeTrash()
+				handler.prepare(), handler.purgeChain()
 			]).then(function() {
 				done();
 			});
