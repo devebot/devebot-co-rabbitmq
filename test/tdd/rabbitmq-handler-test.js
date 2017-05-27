@@ -10,36 +10,6 @@ var util = require('util');
 var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test');
 var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
 
-var checkSkip = function(name) {
-	if (process.env.TDD_EXEC && process.env.TDD_EXEC.indexOf(name) < 0) {
-		this.skip();
-	}
-}
-
-var generateRange = function(min, max) {
-	var range = [];
-	for(var i=min; i<max; i++) range.push(i);
-	return range;
-}
-
-var generateFields = function(num) {
-	return generateRange(0, num).map(function(index) {
-		return {
-			name: 'field_' + index,
-			type: 'string'
-		}
-	});
-}
-
-var generateObject = function(fields) {
-	var obj = {};
-	fields = fields || {};
-	fields.forEach(function(field) {
-		obj[field.name] = faker.lorem.sentence();
-	});
-	return obj;
-}
-
 describe('rabbitmq-handler:', function() {
 
 	describe('constructor', function() {
@@ -137,3 +107,33 @@ describe('rabbitmq-handler:', function() {
 		});
 	});
 });
+
+var checkSkip = function(name) {
+	if (process.env.TDD_EXEC && process.env.TDD_EXEC.indexOf(name) < 0) {
+		this.skip();
+	}
+}
+
+var generateRange = function(min, max) {
+	var range = [];
+	for(var i=min; i<max; i++) range.push(i);
+	return range;
+}
+
+var generateFields = function(num) {
+	return generateRange(0, num).map(function(index) {
+		return {
+			name: 'field_' + index,
+			type: 'string'
+		}
+	});
+}
+
+var generateObject = function(fields) {
+	var obj = {};
+	fields = fields || {};
+	fields.forEach(function(field) {
+		obj[field.name] = faker.lorem.sentence();
+	});
+	return obj;
+}

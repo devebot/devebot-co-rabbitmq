@@ -1,6 +1,5 @@
 'use strict';
 
-var Loadsync = require('loadsync');
 var Devebot = require('devebot');
 var Promise = Devebot.require('bluebird');
 var lodash = Devebot.require('lodash');
@@ -10,36 +9,7 @@ var faker = require('faker');
 var util = require('util');
 var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test');
 var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
-
-var checkSkip = function(name) {
-	if (process.env.TDD_EXEC && process.env.TDD_EXEC.indexOf(name) < 0) {
-		this.skip();
-	}
-}
-
-var generateRange = function(min, max) {
-	var range = [];
-	for(var i=min; i<max; i++) range.push(i);
-	return range;
-}
-
-var generateFields = function(num) {
-	return generateRange(0, num).map(function(index) {
-		return {
-			name: 'field_' + index,
-			type: 'string'
-		}
-	});
-}
-
-var generateObject = function(fields) {
-	var obj = {};
-	fields = fields || {};
-	fields.forEach(function(field) {
-		obj[field.name] = faker.lorem.sentence();
-	});
-	return obj;
-}
+var Loadsync = require('loadsync');
 
 describe('rabbitmq-recover:', function() {
 
@@ -57,7 +27,7 @@ describe('rabbitmq-recover:', function() {
 				durable: true,
 				noAck: false,
 				redeliveredCountName: 'x-redelivered-count',
-            	redeliveredLimit: 3
+				redeliveredLimit: 3
 			}
 		});
 
@@ -83,7 +53,7 @@ describe('rabbitmq-recover:', function() {
 		it('filter the failed processing data to trash (recycle-bin)', function(done) {
 			var total = 1000;
 			var index = 0;
-			handler.consume(function(message, info, finish) {
+			handler.process(function(message, info, finish) {
 				message = JSON.parse(message);
 				if ([11, 21, 31, 41, 51, 61, 71, 81, 91, 99].indexOf(message.code) < 0) {
 					finish();
@@ -109,11 +79,11 @@ describe('rabbitmq-recover:', function() {
 			var index = 0;
 			var loadsync = new Loadsync([{
 				name: 'testsync',
-				cards: ['consume', 'recycle']
+				cards: ['process', 'recycle']
 			}]);
 
 			var code1 = [11, 21, 31, 41, 51, 61, 71, 81, 91, 99];
-			handler.consume(function(message, info, finish) {
+			handler.process(function(message, info, finish) {
 				message = JSON.parse(message);
 				if (code1.indexOf(message.code) < 0) {
 					finish();
@@ -123,7 +93,7 @@ describe('rabbitmq-recover:', function() {
 				if (++index >= (total + 3*10)) {
 					handler.checkChain().then(function(info) {
 						assert.equal(info.messageCount, 0, 'Chain should be empty');
-						loadsync.check('consume', 'testsync');
+						loadsync.check('process', 'testsync');
 					});
 				}
 			});
@@ -155,3 +125,33 @@ describe('rabbitmq-recover:', function() {
 		});
 	});
 });
+
+var checkSkip = function(name) {
+	if (process.env.TDD_EXEC && process.env.TDD_EXEC.indexOf(name) < 0) {
+		this.skip();
+	}
+}
+
+var generateRange = function(min, max) {
+	var range = [];
+	for(var i=min; i<max; i++) range.push(i);
+	return range;
+}
+
+var generateFields = function(num) {
+	return generateRange(0, num).map(function(index) {
+		return {
+			name: 'field_' + index,
+			type: 'string'
+		}
+	});
+}
+
+var generateObject = function(fields) {
+	var obj = {};
+	fields = fields || {};
+	fields.forEach(function(field) {
+		obj[field.name] = faker.lorem.sentence();
+	});
+	return obj;
+}
