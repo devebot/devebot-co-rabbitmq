@@ -40,15 +40,15 @@ var generateObject = function(fields) {
 	return obj;
 }
 
-describe('RabbitmqHandler:', function() {
+describe('rabbitmq-handler:', function() {
 
-	describe('Constructor', function() {
+	describe('constructor', function() {
 		before(function() {
 			checkSkip.call(this, 'constructor');
 		});
 	});
 
-	describe('Workbench', function() {
+	describe('workbench', function() {
 		var handler = new RabbitmqHandler({
 			host: 'amqp://master:zaq123edcx@192.168.56.56',
 			exchangeType: 'direct',

@@ -91,8 +91,8 @@ describe('rabbitmq-recover:', function() {
 					finish('error');
 				}
 				if (++index >= (total + 3*10)) {
-					handler.countChainMessages().then(function(messageCount) {
-						assert.equal(messageCount, 0, 'Chain should be empty');
+					handler.checkChain().then(function(info) {
+						assert.equal(info.messageCount, 0, 'Chain should be empty');
 						done();
 					});
 				}
@@ -121,8 +121,8 @@ describe('rabbitmq-recover:', function() {
 					finish('error');
 				}
 				if (++index >= (total + 3*10)) {
-					handler.countChainMessages().then(function(messageCount) {
-						assert.equal(messageCount, 0, 'Chain should be empty');
+					handler.checkChain().then(function(info) {
+						assert.equal(info.messageCount, 0, 'Chain should be empty');
 						loadsync.check('consume', 'testsync');
 					});
 				}
@@ -133,8 +133,8 @@ describe('rabbitmq-recover:', function() {
 				message = JSON.parse(message);
 				code2.push(message.code);
 				if (code2.length >= 10) {
-					handler.countTrashMessages().then(function(messageCount) {
-						assert.equal(messageCount, 0, 'Trash should be empty');
+					handler.checkTrash().then(function(info) {
+						assert.equal(info.messageCount, 0, 'Trash should be empty');
 						loadsync.check('recycle', 'testsync');
 					});
 				}
