@@ -10,6 +10,7 @@ var util = require('util');
 var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test');
 var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
 var appCfg = require('./app-configuration');
+var Loadsync = require('loadsync');
 
 describe('rabbitmq-handler:', function() {
 
@@ -97,6 +98,86 @@ describe('rabbitmq-handler:', function() {
 				var randobj = generateObject(fields);
 				randobj.code = count;
 				return handler.publish(randobj).delay(1);
+			});
+		});
+	});
+
+	describe('customize enqueue() routingKey', function() {
+		var handler0;
+		var handler1;
+
+		before(function() {
+			handler0 = new RabbitmqHandler(appCfg.extend());
+			handler1 = new RabbitmqHandler(appCfg.extend({
+				routingKey: 'tdd-backup',
+				queue: 'tdd-backup-queue'
+			}));
+		});
+
+		beforeEach(function(done) {
+			Promise.all([
+				handler0.prepare(), handler0.purgeChain(),
+				handler1.prepare(), handler1.purgeChain()
+			]).then(function() {
+				done();
+			});
+		});
+
+		afterEach(function(done) {
+			Promise.all([
+				handler0.destroy(),
+				handler1.destroy()
+			]).then(function() {
+				debugx.enabled && debugx('Handler has been destroyed');
+				done();
+			});
+		});
+
+		it('copy message to another queue (CC)', function(done) {
+			var loadsync = new Loadsync([{
+				name: 'testsync',
+				cards: ['handler0', 'handler1']
+			}]);
+
+			var index0 = 0;
+			handler0.consume(function(message, info, finish) {
+				message = JSON.parse(message);
+				assert(message.code === index0++);
+				finish();
+				if (index0 >= 10) loadsync.check('handler0', 'testsync');
+			});
+
+			var index1 = 0;
+			handler1.process(function(message, info, finish) {
+				message = JSON.parse(message);
+				assert(message.code === index1++);
+				finish();
+				if (index1 >= 10) loadsync.check('handler1', 'testsync');
+			});
+
+			loadsync.ready(function(info) {
+				done();
+			}, 'testsync');
+
+			var arr = generateRange(0, 10);
+			arr.forEach(function(count) {
+				handler0.enqueue({ code: count, msg: 'Hello world' }, {CC: 'tdd-backup'});
+			});
+		});
+
+		it('redirect to another queue by changing routingKey', function(done) {
+			var index = 0;
+			handler1.process(function(message, info, finish) {
+				message = JSON.parse(message);
+				assert(message.code === index++);
+				finish();
+				if (index >= 10) done();
+			});
+			var arr = generateRange(0, 10);
+			arr.forEach(function(count) {
+				handler0.enqueue({ code: count, msg: 'Hello world' }, {}, {
+					routingKey: 'tdd-backup'
+				});
 			});
 		});
 	});
