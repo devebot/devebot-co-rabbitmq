@@ -9,30 +9,25 @@ var faker = require('faker');
 var util = require('util');
 var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test');
 var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
+var appCfg = require('./app-configuration');
 var Loadsync = require('loadsync');
 
-describe('rabbitmq-recover:', function() {
+describe('rabbitmq-handler:', function() {
 
-	describe('workbench', function() {
-		var handler = new RabbitmqHandler({
-			host: 'amqp://master:zaq123edcx@192.168.56.56',
-			exchangeType: 'direct',
-			exchange: 'tdd-recoverable-exchange',
-			routingKey: 'tdd-recoverable',
-			queue: 'tdd-recoverable-queue',
-			durable: true,
-			noAck: false,
-			recycler: {
-				queue: 'tdd-recoverable-trash',
-				durable: true,
-				noAck: false,
-				redeliveredCountName: 'x-redelivered-count',
-				redeliveredLimit: 3
-			}
-		});
+	describe('recycle', function() {
+		var handler;
 
 		before(function() {
-			checkSkip.call(this, 'workbench');
+			checkSkip.call(this, 'recycle');
+			handler = new RabbitmqHandler(appCfg.extend({
+				recycler: {
+					queue: 'tdd-recoverable-trash',
+					durable: true,
+					noAck: false,
+					redeliveredCountName: 'x-redelivered-count',
+					redeliveredLimit: 3
+				}
+			}));
 		});
 
 		beforeEach(function(done) {

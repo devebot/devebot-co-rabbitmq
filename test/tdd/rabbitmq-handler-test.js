@@ -9,6 +9,7 @@ var faker = require('faker');
 var util = require('util');
 var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test');
 var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
+var appCfg = require('./app-configuration');
 
 describe('rabbitmq-handler:', function() {
 
@@ -18,19 +19,12 @@ describe('rabbitmq-handler:', function() {
 		});
 	});
 
-	describe('workbench', function() {
-		var handler = new RabbitmqHandler({
-			host: 'amqp://master:zaq123edcx@192.168.56.56',
-			exchangeType: 'direct',
-			exchange: 'sample-exchange',
-			routingKey: 'sample',
-			queue: 'sample-queue',
-			durable: true,
-			noAck: false
-		});
+	describe('process', function() {
+		var handler;
 
 		before(function() {
-			checkSkip.call(this, 'workbench');
+			checkSkip.call(this, 'process');
+			handler = new RabbitmqHandler(appCfg.extend());
 		});
 
 		beforeEach(function(done) {

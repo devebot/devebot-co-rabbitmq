@@ -8,25 +8,16 @@ var expect = require('chai').expect;
 var util = require('util');
 var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test');
 var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
+var appCfg = require('./app-configuration');
 var Loadsync = require('loadsync');
 
 describe('rabbitmq-handler:', function() {
-	var rabbitmqHandlerConfig = {
-		host: 'amqp://master:zaq123edcx@192.168.56.56',
-		exchangeType: 'direct',
-		exchange: 'tdd-recoverable-exchange',
-		routingKey: 'tdd-recoverable',
-		queue: 'tdd-recoverable-queue',
-		durable: true,
-		noAck: false
-	};
 
 	describe('no limit of consumers if maxConsumers is undefined', function() {
 		var handler;
 
 		before(function() {
-			handler = new RabbitmqHandler(lodash.merge({}, rabbitmqHandlerConfig, {
-			}));
+			handler = new RabbitmqHandler(appCfg.extend());
 		});
 
 		beforeEach(function(done) {
@@ -69,7 +60,7 @@ describe('rabbitmq-handler:', function() {
 		var limit = 7;
 
 		before(function() {
-			handler = new RabbitmqHandler(lodash.merge({}, rabbitmqHandlerConfig, {
+			handler = new RabbitmqHandler(appCfg.extend({
 				maxConsumers: limit
 			}));
 		});
@@ -115,7 +106,7 @@ describe('rabbitmq-handler:', function() {
 		var total = 10;
 
 		before(function() {
-			handler = new RabbitmqHandler(lodash.merge({}, rabbitmqHandlerConfig, {
+			handler = new RabbitmqHandler(appCfg.extend({
 				recycler: {
 					queue: 'tdd-recoverable-trash',
 					noAck: false
@@ -162,7 +153,7 @@ describe('rabbitmq-handler:', function() {
 		var limit = 8;
 
 		before(function() {
-			handler = new RabbitmqHandler(lodash.merge({}, rabbitmqHandlerConfig, {
+			handler = new RabbitmqHandler(appCfg.extend({
 				recycler: {
 					queue: 'tdd-recoverable-trash',
 					noAck: false,
