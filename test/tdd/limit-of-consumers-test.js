@@ -39,7 +39,7 @@ describe('rabbitmq-handler:', function() {
 			var total = 10;
 			var index = 0;
 			Promise.mapSeries(lodash.range(total), function(count) {
-				return handler.process(function(message, info, finish) {
+				return handler.consume(function(message, info, finish) {
 					setTimeout(finish, 10);
 				}).then(function(result) {
 					assert.isNotNull(result.consumerTag);
@@ -83,7 +83,7 @@ describe('rabbitmq-handler:', function() {
 		it('limit of consumers to ' + limit, function(done) {
 			var index = 0;
 			Promise.mapSeries(lodash.range(total), function(count) {
-				return handler.process(function(message, info, finish) {
+				return handler.consume(function(message, info, finish) {
 					setTimeout(finish, 10);
 				}).then(function(success) {
 					assert.isNotNull(success.consumerTag);

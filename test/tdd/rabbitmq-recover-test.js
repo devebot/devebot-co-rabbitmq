@@ -42,11 +42,11 @@ describe('rabbitmq-handler:', function() {
 			});
 		});
 
-		it('filter the failed processing data to trash (recycle-bin)', function(done) {
+		it('filter the failed consumeing data to trash (recycle-bin)', function(done) {
 			var total = 1000;
 			var index = 0;
 			var codes = [11, 21, 31, 41, 51, 61, 71, 81, 91, 99];
-			var ok = handler.process(function(message, info, finish) {
+			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				if (codes.indexOf(message.code) < 0) {
 					finish();
@@ -66,7 +66,7 @@ describe('rabbitmq-handler:', function() {
 			});
 			ok.then(function() {
 				Promise.mapSeries(lodash.range(total), function(count) {
-					return handler.publish({ code: count, msg: 'Hello world' });
+					return handler.produce({ code: count, msg: 'Hello world' });
 				});
 			})
 			this.timeout(5*total);
@@ -77,11 +77,11 @@ describe('rabbitmq-handler:', function() {
 			var index = 0;
 			var loadsync = new Loadsync([{
 				name: 'testsync',
-				cards: ['process', 'recycle']
+				cards: ['consume', 'recycle']
 			}]);
 
 			var code1 = [11, 21, 31, 41, 51, 61, 71, 81, 91, 99];
-			var ok1 = handler.process(function(message, info, finish) {
+			var ok1 = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				if (code1.indexOf(message.code) < 0) {
 					finish();
@@ -91,7 +91,7 @@ describe('rabbitmq-handler:', function() {
 				if (++index >= (total + 3*code1.length)) {
 					handler.checkChain().then(function(info) {
 						assert.equal(info.messageCount, 0, 'Chain should be empty');
-						loadsync.check('process', 'testsync');
+						loadsync.check('consume', 'testsync');
 					});
 				}
 			}).then(function() {
@@ -120,7 +120,7 @@ describe('rabbitmq-handler:', function() {
 
 			Promise.all([ok1, ok2]).then(function() {
 				Promise.mapSeries(lodash.range(total), function(count) {
-					return handler.publish({ code: count, msg: 'Hello world' });
+					return handler.produce({ code: count, msg: 'Hello world' });
 				});
 			});
 			this.timeout(5*total);

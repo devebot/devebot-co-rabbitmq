@@ -20,11 +20,10 @@ describe('rabbitmq-handler:', function() {
 		});
 	});
 
-	describe('process', function() {
+	describe('consume', function() {
 		var handler;
 
 		before(function() {
-			checkSkip.call(this, 'process');
 			handler = new RabbitmqHandler(appCfg.extend());
 		});
 
@@ -53,7 +52,7 @@ describe('rabbitmq-handler:', function() {
 				return handler.purgeChain();
 			}).then(function() {
 				Promise.mapSeries(lodash.range(total), function(count) {
-					return handler.publish({ code: count, msg: 'Hello world' }).delay(1);
+					return handler.produce({ code: count, msg: 'Hello world' }).delay(1);
 				});
 			});
 		});
@@ -78,7 +77,7 @@ describe('rabbitmq-handler:', function() {
 			}).then(function() {
 				Promise.reduce(lodash.range(max), function(state, n) {
 					return Promise.each(n0to9, function(k) {
-						handler.publish({ code: (10*n + k), msg: 'Hello world' });
+						handler.produce({ code: (10*n + k), msg: 'Hello world' });
 					}).delay(1);
 				}, {});
 			});
@@ -100,13 +99,13 @@ describe('rabbitmq-handler:', function() {
 				Promise.mapSeries(lodash.range(total), function(count) {
 					var randobj = generateObject(fields);
 					randobj.code = count;
-					return handler.publish(randobj).delay(1);
+					return handler.produce(randobj).delay(1);
 				});
 			});
 		});
 	});
 
-	describe('customize enqueue() routingKey', function() {
+	describe('customize produce() routingKey', function() {
 		var handler0;
 		var handler1;
 
@@ -156,7 +155,7 @@ describe('rabbitmq-handler:', function() {
 			});
 
 			var index1 = 0;
-			var ok1 = handler1.process(function(message, info, finish) {
+			var ok1 = handler1.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				assert(message.code === index1++);
 				finish();
@@ -171,7 +170,7 @@ describe('rabbitmq-handler:', function() {
 
 			Promise.all([ok0, ok1]).then(function() {
 				lodash.range(total).forEach(function(count) {
-					handler0.enqueue({ code: count, msg: 'Hello world' }, {CC: 'tdd-backup'});
+					handler0.produce({ code: count, msg: 'Hello world' }, {CC: 'tdd-backup'});
 				});
 			});
 		});
@@ -179,7 +178,7 @@ describe('rabbitmq-handler:', function() {
 		it('redirect to another queue by changing routingKey', function(done) {
 			var total = 10;
 			var index = 0;
-			var ok1 = handler1.process(function(message, info, finish) {
+			var ok1 = handler1.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				assert(message.code === index++);
 				finish();
@@ -189,7 +188,7 @@ describe('rabbitmq-handler:', function() {
 			});
 			ok1.then(function() {
 				lodash.range(total).forEach(function(count) {
-					handler0.enqueue({ code: count, msg: 'Hello world' }, {}, {
+					handler0.produce({ code: count, msg: 'Hello world' }, {}, {
 						routingKey: 'tdd-backup'
 					});
 				});
