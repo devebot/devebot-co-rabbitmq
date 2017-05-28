@@ -22,7 +22,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.prepare(), handler.purgeChain()
+				handler.ready(), handler.purgeChain()
 			]).then(function() {
 				done();
 			});
@@ -67,7 +67,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.prepare(), handler.purgeChain()
+				handler.ready(), handler.purgeChain()
 			]).then(function() {
 				done();
 			});
@@ -116,7 +116,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.prepare(), handler.purgeChain(), handler.purgeTrash()
+				handler.ready(), handler.purgeChain(), handler.purgeTrash()
 			]).then(function() {
 				done();
 			});
@@ -164,7 +164,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.prepare(), handler.purgeChain(), handler.purgeTrash()
+				handler.ready(), handler.purgeChain(), handler.purgeTrash()
 			]).then(function() {
 				done();
 			});

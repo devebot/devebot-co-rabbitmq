@@ -28,7 +28,7 @@ describe('rabbitmq-handler:', function() {
 		});
 
 		beforeEach(function(done) {
-			handler.prepare().then(function() {
+			handler.ready().then(function() {
 				done();
 			});
 		});
@@ -119,8 +119,8 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler0.prepare(),
-				handler1.prepare()
+				handler0.ready(),
+				handler1.ready()
 			]).then(function() {
 				done();
 			});

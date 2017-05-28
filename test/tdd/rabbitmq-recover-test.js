@@ -30,7 +30,7 @@ describe('rabbitmq-handler:', function() {
 		});
 
 		beforeEach(function(done) {
-			handler.prepare().then(function() {
+			handler.ready().then(function() {
 				done();
 			});
 		});
