@@ -18,7 +18,6 @@ describe('rabbitmq-handler:', function() {
 		var handler;
 
 		before(function() {
-			checkSkip.call(this, 'recycle');
 			handler = new RabbitmqHandler(appCfg.extend({
 				recycler: {
 					queue: 'tdd-recoverable-trash',
@@ -31,9 +30,7 @@ describe('rabbitmq-handler:', function() {
 		});
 
 		beforeEach(function(done) {
-			Promise.all([
-				handler.prepare(), handler.purgeChain(), handler.purgeTrash()
-			]).then(function() {
+			handler.prepare().then(function() {
 				done();
 			});
 		});
@@ -48,25 +45,31 @@ describe('rabbitmq-handler:', function() {
 		it('filter the failed processing data to trash (recycle-bin)', function(done) {
 			var total = 1000;
 			var index = 0;
-			handler.process(function(message, info, finish) {
+			var codes = [11, 21, 31, 41, 51, 61, 71, 81, 91, 99];
+			var ok = handler.process(function(message, info, finish) {
 				message = JSON.parse(message);
-				if ([11, 21, 31, 41, 51, 61, 71, 81, 91, 99].indexOf(message.code) < 0) {
+				if (codes.indexOf(message.code) < 0) {
 					finish();
 				} else {
 					finish('error');
 				}
-				if (++index >= (total + 3*10)) {
+				if (++index >= (total + 3*codes.length)) {
 					handler.checkChain().then(function(info) {
 						assert.equal(info.messageCount, 0, 'Chain should be empty');
 						done();
 					});
 				}
+			}).then(function() {
+				return handler.purgeChain();
+			}).then(function() {
+				return handler.purgeTrash();
 			});
-			var arr = generateRange(0, total);
-			Promise.mapSeries(arr, function(count) {
-				return handler.publish({ code: count, msg: 'Hello world' });
-			});
-			this.timeout(4000);
+			ok.then(function() {
+				Promise.mapSeries(lodash.range(total), function(count) {
+					return handler.publish({ code: count, msg: 'Hello world' });
+				});
+			})
+			this.timeout(5*total);
 		});
 
 		it('assure the total of recovered items in trash (recycle-bin)', function(done) {
@@ -78,32 +81,36 @@ describe('rabbitmq-handler:', function() {
 			}]);
 
 			var code1 = [11, 21, 31, 41, 51, 61, 71, 81, 91, 99];
-			handler.process(function(message, info, finish) {
+			var ok1 = handler.process(function(message, info, finish) {
 				message = JSON.parse(message);
 				if (code1.indexOf(message.code) < 0) {
 					finish();
 				} else {
 					finish('error');
 				}
-				if (++index >= (total + 3*10)) {
+				if (++index >= (total + 3*code1.length)) {
 					handler.checkChain().then(function(info) {
 						assert.equal(info.messageCount, 0, 'Chain should be empty');
 						loadsync.check('process', 'testsync');
 					});
 				}
+			}).then(function() {
+				return handler.purgeChain();
 			});
 
 			var code2 = [];
-			handler.recycle(function(message, info, finish) {
+			var ok2 = handler.recycle(function(message, info, finish) {
 				message = JSON.parse(message);
 				code2.push(message.code);
-				if (code2.length >= 10) {
+				if (code2.length >= code1.length) {
 					handler.checkTrash().then(function(info) {
 						assert.equal(info.messageCount, 0, 'Trash should be empty');
 						loadsync.check('recycle', 'testsync');
 					});
 				}
 				finish();
+			}).then(function() {
+				return handler.purgeTrash();
 			});
 
 			loadsync.ready(function(info) {
@@ -111,42 +118,12 @@ describe('rabbitmq-handler:', function() {
 				setTimeout(done, 100);
 			}, 'testsync');
 
-			var arr = generateRange(0, total);
-			Promise.mapSeries(arr, function(count) {
-				return handler.publish({ code: count, msg: 'Hello world' });
+			Promise.all([ok1, ok2]).then(function() {
+				Promise.mapSeries(lodash.range(total), function(count) {
+					return handler.publish({ code: count, msg: 'Hello world' });
+				});
 			});
-
-			this.timeout(4000);
+			this.timeout(5*total);
 		});
 	});
 });
-
-var checkSkip = function(name) {
-	if (process.env.TDD_EXEC && process.env.TDD_EXEC.indexOf(name) < 0) {
-		this.skip();
-	}
-}
-
-var generateRange = function(min, max) {
-	var range = [];
-	for(var i=min; i<max; i++) range.push(i);
-	return range;
-}
-
-var generateFields = function(num) {
-	return generateRange(0, num).map(function(index) {
-		return {
-			name: 'field_' + index,
-			type: 'string'
-		}
-	});
-}
-
-var generateObject = function(fields) {
-	var obj = {};
-	fields = fields || {};
-	fields.forEach(function(field) {
-		obj[field.name] = faker.lorem.sentence();
-	});
-	return obj;
-}

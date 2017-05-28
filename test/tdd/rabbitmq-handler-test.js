@@ -29,9 +29,7 @@ describe('rabbitmq-handler:', function() {
 		});
 
 		beforeEach(function(done) {
-			Promise.all([
-				handler.prepare(), handler.purgeChain()
-			]).then(function() {
+			handler.prepare().then(function() {
 				done();
 			});
 		});
@@ -44,23 +42,26 @@ describe('rabbitmq-handler:', function() {
 		});
 
 		it('preserve the order of elements', function(done) {
+			var total = 10;
 			var index = 0;
 			handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				assert(message.code === index++);
 				finish();
-				if (index >= 10) done();
-			});
-			var arr = generateRange(0, 10);
-			arr.forEach(function(count) {
-				handler.publish({ code: count, msg: 'Hello world' });
+				if (index >= total) done();
+			}).then(function() {
+				return handler.purgeChain();
+			}).then(function() {
+				Promise.mapSeries(lodash.range(total), function(count) {
+					return handler.publish({ code: count, msg: 'Hello world' }).delay(1);
+				});
 			});
 		});
 
 		it('push elements to queue massively', function(done) {
 			var max = 5000;
-			var idx = generateRange(0, max);
-			var n0to9 = generateRange(0, 10);
+			var idx = lodash.range(max);
+			var n0to9 = lodash.range(10);
 			var count = 0;
 			handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
@@ -73,8 +74,9 @@ describe('rabbitmq-handler:', function() {
 					done();
 				}
 			}).then(function() {
-				var arr = generateRange(0, max);
-				Promise.reduce(arr, function(state, n) {
+				return handler.purgeChain();
+			}).then(function() {
+				Promise.reduce(lodash.range(max), function(state, n) {
 					return Promise.each(n0to9, function(k) {
 						handler.publish({ code: (10*n + k), msg: 'Hello world' });
 					}).delay(1);
@@ -92,12 +94,14 @@ describe('rabbitmq-handler:', function() {
 				assert(message.code === index++);
 				finish();
 				if (index >= total) done();
-			});
-			var arr = generateRange(0, total);
-			Promise.mapSeries(arr, function(count) {
-				var randobj = generateObject(fields);
-				randobj.code = count;
-				return handler.publish(randobj).delay(1);
+			}).then(function() {
+				return handler.purgeChain();
+			}).then(function() {
+				Promise.mapSeries(lodash.range(total), function(count) {
+					var randobj = generateObject(fields);
+					randobj.code = count;
+					return handler.publish(randobj).delay(1);
+				});
 			});
 		});
 	});
@@ -110,14 +114,14 @@ describe('rabbitmq-handler:', function() {
 			handler0 = new RabbitmqHandler(appCfg.extend());
 			handler1 = new RabbitmqHandler(appCfg.extend({
 				routingKey: 'tdd-backup',
-				queue: 'tdd-backup-queue'
+				queue: 'tdd-recoverable-clone'
 			}));
 		});
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler0.prepare(), handler0.purgeChain(),
-				handler1.prepare(), handler1.purgeChain()
+				handler0.prepare(),
+				handler1.prepare()
 			]).then(function() {
 				done();
 			});
@@ -134,49 +138,60 @@ describe('rabbitmq-handler:', function() {
 		});
 
 		it('copy message to another queue (CC)', function(done) {
+			var total = 10;
+
 			var loadsync = new Loadsync([{
 				name: 'testsync',
 				cards: ['handler0', 'handler1']
 			}]);
 
 			var index0 = 0;
-			handler0.consume(function(message, info, finish) {
+			var ok0 = handler0.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				assert(message.code === index0++);
 				finish();
-				if (index0 >= 10) loadsync.check('handler0', 'testsync');
+				if (index0 >= total) loadsync.check('handler0', 'testsync');
+			}).then(function() {
+				return handler0.purgeChain();
 			});
 
 			var index1 = 0;
-			handler1.process(function(message, info, finish) {
+			var ok1 = handler1.process(function(message, info, finish) {
 				message = JSON.parse(message);
 				assert(message.code === index1++);
 				finish();
-				if (index1 >= 10) loadsync.check('handler1', 'testsync');
+				if (index1 >= total) loadsync.check('handler1', 'testsync');
+			}).then(function() {
+				return handler1.purgeChain();
 			});
 
 			loadsync.ready(function(info) {
 				done();
 			}, 'testsync');
 
-			var arr = generateRange(0, 10);
-			arr.forEach(function(count) {
-				handler0.enqueue({ code: count, msg: 'Hello world' }, {CC: 'tdd-backup'});
+			Promise.all([ok0, ok1]).then(function() {
+				lodash.range(total).forEach(function(count) {
+					handler0.enqueue({ code: count, msg: 'Hello world' }, {CC: 'tdd-backup'});
+				});
 			});
 		});
 
 		it('redirect to another queue by changing routingKey', function(done) {
+			var total = 10;
 			var index = 0;
-			handler1.process(function(message, info, finish) {
+			var ok1 = handler1.process(function(message, info, finish) {
 				message = JSON.parse(message);
 				assert(message.code === index++);
 				finish();
-				if (index >= 10) done();
+				if (index >= total) done();
+			}).then(function() {
+				return handler1.purgeChain();
 			});
-			var arr = generateRange(0, 10);
-			arr.forEach(function(count) {
-				handler0.enqueue({ code: count, msg: 'Hello world' }, {}, {
-					routingKey: 'tdd-backup'
+			ok1.then(function() {
+				lodash.range(total).forEach(function(count) {
+					handler0.enqueue({ code: count, msg: 'Hello world' }, {}, {
+						routingKey: 'tdd-backup'
+					});
 				});
 			});
 		});
@@ -189,14 +204,8 @@ var checkSkip = function(name) {
 	}
 }
 
-var generateRange = function(min, max) {
-	var range = [];
-	for(var i=min; i<max; i++) range.push(i);
-	return range;
-}
-
 var generateFields = function(num) {
-	return generateRange(0, num).map(function(index) {
+	return lodash.range(num).map(function(index) {
 		return {
 			name: 'field_' + index,
 			type: 'string'
