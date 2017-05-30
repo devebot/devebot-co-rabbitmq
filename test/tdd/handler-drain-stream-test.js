@@ -34,10 +34,11 @@ describe('rabbitmq-handler:', function() {
 		});
 
 		it('emit drain event if the produce() is overflowed', function(done) {
+			var timeout = 50;
 			var total = 200;
 			var count = 0;
 			var check = lodash.range(total);
-			var bog = new BigObjectGenerator(3000, total);
+			var bog = new BigObjectGenerator(3000, total, timeout);
 			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				check.splice(check.indexOf(message.code), 1);
@@ -57,29 +58,26 @@ describe('rabbitmq-handler:', function() {
 				var data = null;
 				var sendData = function() {
 					handler.outlet.removeAllListeners('drain');
-					if (data === null) {
-						data = bog.next();
+					bog.next().then(function(data) {
 						if (lodash.isEmpty(data)) return;
-					}
-					handler.produce(data).then(function() {
-						data = null;
-						sendData();
-					}).catch(function() {
-						data = null;
-						handler.outlet.on('drain', sendData);
-					});
+						handler.produce(data).then(function() {
+							sendData();
+						}).catch(function() {
+							handler.outlet.on('drain', sendData);
+						});
+					})
 				}
 				sendData();
 			}).catch(function(err) {
 				done(err);
 			})
-			this.timeout(10000);
+			this.timeout(1000 + total*timeout*2);
 		});
 	});
 });
 
 var faker = require('faker');
-var BigObjectGenerator = function(fieldNum, total) {
+var BigObjectGenerator = function(fieldNum, total, timeout) {
 	this.index = 0;
 	this.total = total;
 	this.fields = lodash.range(fieldNum).map(function(index) {
@@ -96,6 +94,6 @@ var BigObjectGenerator = function(fieldNum, total) {
 		});
 		obj.code = this.index;
 		this.index++;
-		return obj;
+		return Promise.resolve(obj).delay(timeout);
 	}
 }
