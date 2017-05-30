@@ -13,7 +13,7 @@ var Loadsync = require('loadsync');
 
 describe('rabbitmq-handler:', function() {
 
-	describe('no limit of consumers if maxConsumers is undefined', function() {
+	describe('no limit of consumers if maxSubscribers is undefined', function() {
 		var handler;
 
 		before(function() {
@@ -61,7 +61,7 @@ describe('rabbitmq-handler:', function() {
 
 		before(function() {
 			handler = new RabbitmqHandler(appCfg.extend({
-				maxConsumers: limit
+				maxSubscribers: limit
 			}));
 		});
 
@@ -89,7 +89,7 @@ describe('rabbitmq-handler:', function() {
 					assert.isNotNull(success.consumerTag);
 					return success;
 				}).catch(function(failure) {
-					assert.equal(failure.maxConsumers, limit);
+					assert.equal(failure.maxSubscribers, limit);
 					return failure;
 				});
 			}).then(function() {
@@ -101,7 +101,7 @@ describe('rabbitmq-handler:', function() {
 		});
 	});
 
-	describe('no limit of recyclers if maxConsumers is undefined', function() {
+	describe('no limit of recyclers if maxSubscribers is undefined', function() {
 		var handler;
 		var total = 10;
 
@@ -157,7 +157,7 @@ describe('rabbitmq-handler:', function() {
 				recycler: {
 					queue: 'tdd-recoverable-trash',
 					noAck: false,
-					maxConsumers: limit
+					maxSubscribers: limit
 				}
 			}));
 		});
@@ -186,7 +186,7 @@ describe('rabbitmq-handler:', function() {
 					assert.isNotNull(success.consumerTag);
 					return success;
 				}).catch(function(failure) {
-					assert.equal(failure.maxConsumers, limit);
+					assert.equal(failure.maxSubscribers, limit);
 					return failure;
 				});
 			}).then(function() {
