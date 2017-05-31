@@ -25,7 +25,8 @@
   },
   "dependencies": {
     "amqplib": "^0.5.1",
-    "devebot": "^0.1.23"
+    "devebot": "^0.1.23",
+    "locks": "^0.2.2"
   },
   "devDependencies": {
     "chai": "^3.5.0",

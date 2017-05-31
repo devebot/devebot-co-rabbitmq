@@ -9,10 +9,11 @@ var faker = require('faker');
 
 var helper = {};
 
-var BigObjectGenerator = helper.BigObjectGenerator = function(fieldNum, total, timeout) {
-	this.index = 0;
-	this.total = total;
-	this.fields = lodash.range(fieldNum).map(function(index) {
+var BigObjectGenerator = helper.BigObjectGenerator = function(params) {
+	params = params || {};
+	this.index = params.min || 0;
+	this.total = params.max || total;
+	this.fields = lodash.range(params.numberOfFields || 10).map(function(index) {
 		return {
 			name: 'field_' + index,
 			type: 'string'
@@ -26,7 +27,7 @@ var BigObjectGenerator = helper.BigObjectGenerator = function(fieldNum, total, t
 		});
 		obj.code = this.index;
 		this.index++;
-		return Promise.resolve(obj).delay(timeout);
+		return Promise.resolve(obj).delay(params.timeout || 0);
 	}
 }
 

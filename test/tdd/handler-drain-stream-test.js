@@ -45,7 +45,7 @@ describe('rabbitmq-handler:', function() {
 			var total = CONST_TOTAL;
 			var count = 0;
 			var check = lodash.range(total);
-			var bog = new bogen.BigObjectGenerator(FIELD_NUM, total, timeout);
+			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, max: total, timeout: timeout});
 			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				check.splice(check.indexOf(message.code), 1);
@@ -87,7 +87,7 @@ describe('rabbitmq-handler:', function() {
 			var total = CONST_TOTAL;
 			var count = 0;
 			var check = lodash.range(total);
-			var bog = new bogen.BigObjectGenerator(FIELD_NUM, total, timeout);
+			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, max: total, timeout: timeout});
 			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				check.splice(check.indexOf(message.code), 1);
@@ -135,7 +135,7 @@ describe('rabbitmq-handler:', function() {
 			var total = CONST_TOTAL;
 			var count = 0;
 			var check = lodash.range(total);
-			var bog = new bogen.BigObjectGenerator(FIELD_NUM, total, timeout);
+			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, max: total, timeout: timeout});
 			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				if (message) {
