@@ -86,6 +86,47 @@ describe('handler-stream-mutex:', function() {
 			})
 			this.timeout(10000000 + total*timeout*3);
 		});
+
+		it('two exclusive mutex streams', function(done) {
+			var timeout = CONST_TIMEOUT;
+			var total = CONST_TOTAL;
+			var count = 0;
+			var check = lodash.range(2*total);
+			var bog1 = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, max: total, timeout: timeout});
+			var bog2 = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, min: total, max: 2*total, timeout: 0});
+			var ok = handler.consume(function(message, info, finish) {
+				message = JSON.parse(message);
+				if (message) {
+					assert.equal(message.code, count);
+					check.splice(check.indexOf(message.code), 1);
+					debugx.enabled && debugx('Message #%s', message.code);
+					finish();
+					if (++count >= (2*total)) {
+						handler.checkChain().then(function(info) {
+							assert.equal(info.messageCount, 0, 'Chain should be empty');
+							debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
+							done();
+						});
+					}
+				}
+			});
+			ok.then(function() {
+				var bos1 = new bogen.BigObjectStreamify(bog1, {objectMode: true});
+				var bos2 = new bogen.BigObjectStreamify(bog2, {objectMode: true});
+				debug0.enabled && debug0('Starting...');
+				debugx.enabled && debugx('swallow() - start');
+				return Promise.all([
+					handler.pull(bos1),
+					handler.pull(bos2)
+				])
+			}).then(function() {
+				debugx.enabled && debugx('swallow() - done');
+			}).catch(function(err) {
+				debugx.enabled && debugx('swallow() - error');
+				done(err);
+			})
+			this.timeout(10000000 + total*timeout*3);
+		});
 	});
 
 	describe('stream/produce without mutex', function() {
