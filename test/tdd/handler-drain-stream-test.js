@@ -18,7 +18,7 @@ describe('rabbitmq-handler:', function() {
 
 	describe('drain-stream', function() {
 		var FIELD_NUM = 10000;
-		var CONST_TOTAL = 100;
+		var CONST_TOTAL = 10;
 		var CONST_TIMEOUT = 5;
 		var handler;
 
@@ -28,6 +28,8 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			handler.ready().then(function() {
+				return handler.purgeChain();
+			}).then(function() {
 				done();
 			});
 		});
@@ -127,6 +129,40 @@ describe('rabbitmq-handler:', function() {
 					debug0.enabled && debug0('End');
 				});
 			}).catch(function(err) {
+				done(err);
+			})
+			this.timeout(10000000 + total*timeout*3);
+		});
+
+		it('emit drain event if the produce() is overflowed (swallow)', function(done) {
+			var timeout = CONST_TIMEOUT;
+			var total = CONST_TOTAL;
+			var count = 0;
+			var check = lodash.range(total);
+			var bog = new bogen.BigObjectGenerator(FIELD_NUM, total, timeout);
+			var ok = handler.consume(function(message, info, finish) {
+				message = JSON.parse(message);
+				if (message) {
+					check.splice(check.indexOf(message.code), 1);
+					debugx.enabled && debugx('Message #%s', message.code);
+					finish();
+					if (++count >= total) {
+						handler.checkChain().then(function(info) {
+							assert.equal(info.messageCount, 0, 'Chain should be empty');
+							debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
+							done();
+						});
+					}
+				}
+			});
+			ok.then(function() {
+				var bos = new bogen.BigObjectStreamify(bog, {objectMode: true});
+				debug0.enabled && debug0('Starting...');
+				return handler.pull(bos);
+			}).then(function() {
+				debugx.enabled && debugx('pull() - done');
+			}).catch(function(err) {
+				debugx.enabled && debugx('pull() - error');
 				done(err);
 			})
 			this.timeout(10000000 + total*timeout*3);

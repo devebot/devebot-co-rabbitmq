@@ -19,7 +19,7 @@ var BigObjectGenerator = helper.BigObjectGenerator = function(fieldNum, total, t
 		}
 	});
 	this.next = function() {
-		if (this.index >= this.total) return Promise.resolve();
+		if (this.index >= this.total) return Promise.resolve(null);
 		var obj = {};
 		this.fields.forEach(function(field) {
 			obj[field.name] = faker.lorem.sentence();
@@ -41,7 +41,12 @@ util.inherits(BigObjectStreamify, Readable);
 BigObjectStreamify.prototype._read = function() {
 	var self = this;
 	self.generator.next().then(function(obj) {
-		self.push(obj);
+		if (obj === null) {
+			self.emit('end');
+		} else {
+			self.push(obj);
+		}
+		return obj;
 	}).catch(function(error) {
 		self.emit('error', error);
 	})
