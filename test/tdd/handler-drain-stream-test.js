@@ -58,8 +58,6 @@ describe('rabbitmq-handler:', function() {
 						done();
 					});
 				}
-			}).then(function() {
-				return handler.purgeChain();
 			});
 			ok.then(function() {
 				debug0.enabled && debug0('Starting...');
@@ -102,8 +100,6 @@ describe('rabbitmq-handler:', function() {
 						done();
 					});
 				}
-			}).then(function() {
-				return handler.purgeChain();
 			});
 			ok.then(function() {
 				var bos = new bogen.BigObjectStreamify(bog, {objectMode: true});

@@ -29,6 +29,8 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			handler.ready().then(function() {
+				return handler.purgeChain();
+			}).then(function() {
 				done();
 			});
 		});
@@ -48,8 +50,6 @@ describe('rabbitmq-handler:', function() {
 				assert(message.code === index++);
 				finish();
 				if (index >= total) done();
-			}).then(function() {
-				return handler.purgeChain();
 			}).then(function() {
 				Promise.mapSeries(lodash.range(total), function(count) {
 					return handler.produce({ code: count, msg: 'Hello world' }).delay(1);
@@ -73,8 +73,6 @@ describe('rabbitmq-handler:', function() {
 					done();
 				}
 			}).then(function() {
-				return handler.purgeChain();
-			}).then(function() {
 				Promise.reduce(lodash.range(max), function(state, n) {
 					return Promise.each(n0to9, function(k) {
 						handler.produce({ code: (10*n + k), msg: 'Hello world' });
@@ -93,8 +91,6 @@ describe('rabbitmq-handler:', function() {
 				assert(message.code === index++);
 				finish();
 				if (index >= total) done();
-			}).then(function() {
-				return handler.purgeChain();
 			}).then(function() {
 				Promise.mapSeries(lodash.range(total), function(count) {
 					var randobj = generateObject(fields);
@@ -119,8 +115,8 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler0.ready(),
-				handler1.ready()
+				handler0.ready(), handler0.purgeChain(),
+				handler1.ready(), handler1.purgeChain()
 			]).then(function() {
 				done();
 			});
@@ -150,8 +146,6 @@ describe('rabbitmq-handler:', function() {
 				assert(message.code === index0++);
 				finish();
 				if (index0 >= total) loadsync.check('handler0', 'testsync');
-			}).then(function() {
-				return handler0.purgeChain();
 			});
 
 			var index1 = 0;
@@ -160,8 +154,6 @@ describe('rabbitmq-handler:', function() {
 				assert(message.code === index1++);
 				finish();
 				if (index1 >= total) loadsync.check('handler1', 'testsync');
-			}).then(function() {
-				return handler1.purgeChain();
 			});
 
 			loadsync.ready(function(info) {
@@ -183,8 +175,6 @@ describe('rabbitmq-handler:', function() {
 				assert(message.code === index++);
 				finish();
 				if (index >= total) done();
-			}).then(function() {
-				return handler1.purgeChain();
 			});
 			ok1.then(function() {
 				lodash.range(total).forEach(function(count) {

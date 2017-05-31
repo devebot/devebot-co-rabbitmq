@@ -31,6 +31,10 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			handler.ready().then(function() {
+				return handler.purgeChain();
+			}).then(function() {
+				return handler.purgeTrash();
+			}).then(function() {
 				done();
 			});
 		});
@@ -59,10 +63,6 @@ describe('rabbitmq-handler:', function() {
 						done();
 					});
 				}
-			}).then(function() {
-				return handler.purgeChain();
-			}).then(function() {
-				return handler.purgeTrash();
 			});
 			ok.then(function() {
 				Promise.mapSeries(lodash.range(total), function(count) {
@@ -94,8 +94,6 @@ describe('rabbitmq-handler:', function() {
 						loadsync.check('consume', 'testsync');
 					});
 				}
-			}).then(function() {
-				return handler.purgeChain();
 			});
 
 			var code2 = [];
@@ -109,8 +107,6 @@ describe('rabbitmq-handler:', function() {
 					});
 				}
 				finish();
-			}).then(function() {
-				return handler.purgeTrash();
 			});
 
 			loadsync.ready(function(info) {
