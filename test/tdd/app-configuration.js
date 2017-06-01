@@ -5,9 +5,11 @@ var baseCfg = {
 	exchangeType: 'direct',
 	exchangeName: 'tdd-recoverable-exchange',
 	routingKey: 'tdd-recoverable',
-	queue: 'tdd-recoverable-queue',
-	durable: true,
-	noAck: false
+	consumer: {
+		queueName: 'tdd-recoverable-queue',
+		durable: true,
+		noAck: false
+	}
 };
 
 module.exports = {

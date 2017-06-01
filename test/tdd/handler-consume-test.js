@@ -110,7 +110,9 @@ describe('rabbitmq-handler:', function() {
 			handler0 = new RabbitmqHandler(appCfg.extend());
 			handler1 = new RabbitmqHandler(appCfg.extend({
 				routingKey: 'tdd-backup',
-				queue: 'tdd-recoverable-clone'
+				consumer: {
+					queueName: 'tdd-recoverable-clone'
+				}
 			}));
 		});
 
