@@ -10,6 +10,7 @@ var util = require('util');
 var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test');
 var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
 var appCfg = require('./app-configuration');
+var bogen = require('./big-object-generator');
 var Loadsync = require('loadsync');
 
 describe('rabbitmq-handler:', function() {
@@ -85,7 +86,7 @@ describe('rabbitmq-handler:', function() {
 		it('push large elements to queue', function(done) {
 			var total = 10;
 			var index = 0;
-			var fields = generateFields(1000);
+			var bog = new bogen.BigObjectGenerator({numberOfFields: 1000, max: total});
 			handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				assert(message.code === index++);
@@ -93,9 +94,9 @@ describe('rabbitmq-handler:', function() {
 				if (index >= total) done();
 			}).then(function() {
 				Promise.mapSeries(lodash.range(total), function(count) {
-					var randobj = generateObject(fields);
-					randobj.code = count;
-					return handler.produce(randobj).delay(1);
+					return bog.next().then(function(randobj) {
+						return handler.produce(randobj).delay(1);
+					});
 				});
 			});
 		});
@@ -191,22 +192,4 @@ var checkSkip = function(name) {
 	if (process.env.TDD_EXEC && process.env.TDD_EXEC.indexOf(name) < 0) {
 		this.skip();
 	}
-}
-
-var generateFields = function(num) {
-	return lodash.range(num).map(function(index) {
-		return {
-			name: 'field_' + index,
-			type: 'string'
-		}
-	});
-}
-
-var generateObject = function(fields) {
-	var obj = {};
-	fields = fields || {};
-	fields.forEach(function(field) {
-		obj[field.name] = faker.lorem.sentence();
-	});
-	return obj;
 }
