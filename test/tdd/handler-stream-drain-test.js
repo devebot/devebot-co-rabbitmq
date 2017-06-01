@@ -154,11 +154,11 @@ describe('rabbitmq-handler:', function() {
 			ok.then(function() {
 				var bos = new bogen.BigObjectStreamify(bog, {objectMode: true});
 				debug0.enabled && debug0('Starting...');
-				return handler.pull(bos);
+				return handler.exhaust(bos);
 			}).then(function() {
-				debugx.enabled && debugx('pull() - done');
+				debugx.enabled && debugx('exhaust() - done');
 			}).catch(function(err) {
-				debugx.enabled && debugx('pull() - error');
+				debugx.enabled && debugx('exhaust() - error');
 				done(err);
 			})
 			this.timeout(10000000 + total*timeout*3);

@@ -7,8 +7,8 @@ var assert = require('chai').assert;
 var expect = require('chai').expect;
 var faker = require('faker');
 var util = require('util');
-var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test:swallow');
-var debug0 = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test:swallow:timer');
+var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test:exhaust');
+var debug0 = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test:exhaust:timer');
 var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
 var appCfg = require('./app-configuration');
 var bogen = require('./big-object-generator');
@@ -77,7 +77,7 @@ describe('handler-stream-mutex:', function() {
 					});
 				}, 700);
 				debugx.enabled && debugx('swallow() - start');
-				return handler.pull(bos);
+				return handler.exhaust(bos);
 			}).then(function() {
 				debugx.enabled && debugx('swallow() - done');
 			}).catch(function(err) {
@@ -114,15 +114,15 @@ describe('handler-stream-mutex:', function() {
 				var bos1 = new bogen.BigObjectStreamify(bog1, {objectMode: true});
 				var bos2 = new bogen.BigObjectStreamify(bog2, {objectMode: true});
 				debug0.enabled && debug0('Starting...');
-				debugx.enabled && debugx('swallow() - start');
+				debugx.enabled && debugx('exhaust() - start');
 				return Promise.all([
-					handler.pull(bos1),
-					handler.pull(bos2)
+					handler.exhaust(bos1),
+					handler.exhaust(bos2)
 				])
 			}).then(function() {
-				debugx.enabled && debugx('swallow() - done');
+				debugx.enabled && debugx('exhaust() - done');
 			}).catch(function(err) {
-				debugx.enabled && debugx('swallow() - error');
+				debugx.enabled && debugx('exhaust() - error');
 				done(err);
 			})
 			this.timeout(10000000 + total*timeout*3);
@@ -191,12 +191,12 @@ describe('handler-stream-mutex:', function() {
 						});
 					});
 				}, 700);
-				debugx.enabled && debugx('swallow() - start');
-				return handler.pull(bos);
+				debugx.enabled && debugx('exhaust() - start');
+				return handler.exhaust(bos);
 			}).then(function() {
-				debugx.enabled && debugx('swallow() - done');
+				debugx.enabled && debugx('exhaust() - done');
 			}).catch(function(err) {
-				debugx.enabled && debugx('swallow() - error');
+				debugx.enabled && debugx('exhaust() - error');
 				done(err);
 			})
 			this.timeout(10000000 + total*timeout*3);
