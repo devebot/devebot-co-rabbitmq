@@ -20,7 +20,7 @@ describe('rabbitmq-handler:', function() {
 		before(function() {
 			handler = new RabbitmqHandler(appCfg.extend({
 				recycler: {
-					queue: 'tdd-recoverable-trash',
+					queueName: 'tdd-recoverable-trash',
 					durable: true,
 					noAck: false,
 					redeliveredCountName: 'x-redelivered-count',

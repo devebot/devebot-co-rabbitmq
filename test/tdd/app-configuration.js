@@ -1,9 +1,9 @@
 var lodash = require('devebot').require('lodash');
 
 var baseCfg = {
-	host: 'amqp://master:zaq123edcx@192.168.56.56',
+	uri: 'amqp://master:zaq123edcx@192.168.56.56',
 	exchangeType: 'direct',
-	exchange: 'tdd-recoverable-exchange',
+	exchangeName: 'tdd-recoverable-exchange',
 	routingKey: 'tdd-recoverable',
 	queue: 'tdd-recoverable-queue',
 	durable: true,

@@ -130,7 +130,7 @@ describe('rabbitmq-handler:', function() {
 			this.timeout(10000000 + total*timeout*3);
 		});
 
-		it('emit drain event if the produce() is overflowed (swallow)', function(done) {
+		it('emit drain event if the produce() is overflowed (exhaust)', function(done) {
 			var timeout = CONST_TIMEOUT;
 			var total = CONST_TOTAL;
 			var count = 0;

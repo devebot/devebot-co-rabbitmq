@@ -108,7 +108,7 @@ describe('rabbitmq-handler:', function() {
 		before(function() {
 			handler = new RabbitmqHandler(appCfg.extend({
 				recycler: {
-					queue: 'tdd-recoverable-trash',
+					queueName: 'tdd-recoverable-trash',
 					noAck: false
 				}
 			}));
@@ -155,7 +155,7 @@ describe('rabbitmq-handler:', function() {
 		before(function() {
 			handler = new RabbitmqHandler(appCfg.extend({
 				recycler: {
-					queue: 'tdd-recoverable-trash',
+					queueName: 'tdd-recoverable-trash',
 					noAck: false,
 					maxSubscribers: limit
 				}
