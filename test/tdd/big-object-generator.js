@@ -12,7 +12,7 @@ var helper = {};
 var BigObjectGenerator = helper.BigObjectGenerator = function(params) {
 	params = params || {};
 	this.index = params.min || 0;
-	this.total = params.max || total;
+	this.total = params.max || 1000;
 	this.fields = lodash.range(params.numberOfFields || 10).map(function(index) {
 		return {
 			name: 'field_' + index,
