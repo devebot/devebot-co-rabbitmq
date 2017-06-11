@@ -16,10 +16,10 @@ var Loadsync = require('loadsync');
 
 describe('handler-stream-mutex:', function() {
 
-	describe('stream/produce with mutex', function() {
+	describe('stream/produce with mutex:', function() {
 		var FIELD_NUM = 10000;
-		var CONST_TOTAL = 20;
-		var CONST_TIMEOUT = 100;
+		var CONST_TOTAL = 100;
+		var CONST_TIMEOUT = 0;
 		var handler;
 
 		before(function() {
@@ -52,9 +52,9 @@ describe('handler-stream-mutex:', function() {
 			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				if (message) {
+					debugx.enabled && debugx('message.code#%s / count: %s', message.code, count);
 					assert.equal(message.code, count);
 					check.splice(check.indexOf(message.code), 1);
-					debugx.enabled && debugx('Message #%s', message.code);
 					finish();
 					if (++count >= (total + 1)) {
 						handler.checkChain().then(function(info) {
@@ -75,13 +75,13 @@ describe('handler-stream-mutex:', function() {
 							debugx.enabled && debugx('produce() - data inserted');
 						});
 					});
-				}, 700);
-				debugx.enabled && debugx('swallow() - start');
+				}, Math.round(CONST_TIMEOUT * CONST_TOTAL / 2));
+				debugx.enabled && debugx('exhaust() - start');
 				return handler.exhaust(bos);
 			}).then(function() {
-				debugx.enabled && debugx('swallow() - done');
+				debugx.enabled && debugx('exhaust() - done');
 			}).catch(function(err) {
-				debugx.enabled && debugx('swallow() - error');
+				debugx.enabled && debugx('exhaust() - error');
 				done(err);
 			})
 			this.timeout(10000000 + total*timeout*3);
@@ -129,10 +129,10 @@ describe('handler-stream-mutex:', function() {
 		});
 	});
 
-	describe('stream/produce without mutex', function() {
+	describe('stream/produce without mutex:', function() {
 		var FIELD_NUM = 10000;
 		var CONST_TOTAL = 20;
-		var CONST_TIMEOUT = 100;
+		var CONST_TIMEOUT = 0;
 		var handler;
 
 		before(function() {
@@ -190,7 +190,7 @@ describe('handler-stream-mutex:', function() {
 							debugx.enabled && debugx('produce() - data inserted');
 						});
 					});
-				}, 700);
+				}, Math.round(CONST_TIMEOUT * CONST_TOTAL / 2));
 				debugx.enabled && debugx('exhaust() - start');
 				return handler.exhaust(bos);
 			}).then(function() {
