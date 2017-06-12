@@ -37,10 +37,10 @@ var Service = function(params) {
   var arr = [];
   for(var i=0; i<100; i++) arr.push(i);
 
-  handler.prepare().then(function() {
+  handler.ready().then(function() {
     arr.forEach(function(count) {
-      handler.publish({ code: count, msg: 'Hello world (forEach)' }).then(function(result) {
-        console.log('publish() - result: %s', JSON.stringify(result));
+      handler.produce({ code: count, msg: 'Hello world (forEach)' }).then(function(result) {
+        console.log('produce() - result: %s', JSON.stringify(result));
         return result;
       });
     })
@@ -48,8 +48,8 @@ var Service = function(params) {
 
   setTimeout(function() {
     Promise.mapSeries(arr, function(count) {
-      return handler.publish({ code: count, msg: 'Hello world (mapSeries)' }).then(function(result) {
-        console.log('publish() - result: %s', JSON.stringify(result));
+      return handler.produce({ code: count, msg: 'Hello world (mapSeries)' }).then(function(result) {
+        console.log('produce() - result: %s', JSON.stringify(result));
         return result;
       });
     }).then(function() {
