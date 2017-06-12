@@ -21,7 +21,7 @@ describe('rabbitmq-handler:', function() {
 		});
 	});
 
-	describe('consume', function() {
+	describe('consume() method:', function() {
 		var handler;
 
 		before(function() {
@@ -102,7 +102,7 @@ describe('rabbitmq-handler:', function() {
 		});
 	});
 
-	describe('customize produce() routingKey', function() {
+	describe('produce() customize routingKey', function() {
 		var handler0;
 		var handler1;
 
