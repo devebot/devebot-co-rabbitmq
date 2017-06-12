@@ -7,7 +7,11 @@ var Readable = require('stream').Readable;
 var util = require('util');
 var faker = require('faker');
 
-var helper = {};
+var helper = {
+	FIELDS: parseInt(process.env.BOG_FIELDS),
+	TOTAL: parseInt(process.env.BOG_TOTAL),
+	TIMEOUT: parseInt(process.env.BOG_TIMEOUT)
+};
 
 var BigObjectGenerator = helper.BigObjectGenerator = function(params) {
 	params = params || {};

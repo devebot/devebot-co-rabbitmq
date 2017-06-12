@@ -17,9 +17,9 @@ var Loadsync = require('loadsync');
 describe('rabbitmq-handler:', function() {
 
 	describe('publisher is overflowed:', function() {
-		var FIELD_NUM = 10000;
-		var CONST_TOTAL = 100;
-		var CONST_TIMEOUT = 0;
+		var FIELDS = bogen.FIELDS || 10000;
+		var TOTAL = bogen.TOTAL || 100;
+		var TIMEOUT = bogen.TIMEOUT || 0;
 		var handler;
 
 		before(function() {
@@ -41,18 +41,16 @@ describe('rabbitmq-handler:', function() {
 		});
 
 		it('emit drain event if the produce() is overflowed', function(done) {
-			var timeout = CONST_TIMEOUT;
-			var total = CONST_TOTAL;
 			var count = 0;
-			var check = lodash.range(total);
-			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, max: total, timeout: timeout});
+			var check = lodash.range(TOTAL);
+			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELDS, max: TOTAL, timeout: TIMEOUT});
 			var hasDone = false;
 			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				check.splice(check.indexOf(message.code), 1);
 				debugx.enabled && debugx('Message #%s', message.code);
 				finish();
-				if (++count >= total) {
+				if (++count >= TOTAL) {
 					handler.checkChain().then(function(info) {
 						assert.equal(info.messageCount, 0, 'Chain should be empty');
 						debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
@@ -81,22 +79,20 @@ describe('rabbitmq-handler:', function() {
 				debugx.enabled && debugx('Error: %s', JSON.stringify(err));
 				done(err);
 			})
-			this.timeout(10000000 + total*timeout*3);
+			this.timeout(10000000 + TOTAL*TIMEOUT*3);
 		});
 
 		it('emit drain event if the exhaust() is overflowed', function(done) {
-			var timeout = CONST_TIMEOUT;
-			var total = CONST_TOTAL;
 			var count = 0;
-			var check = lodash.range(total);
-			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, max: total, timeout: timeout});
+			var check = lodash.range(TOTAL);
+			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELDS, max: TOTAL, timeout: TIMEOUT});
 			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				if (message) {
 					check.splice(check.indexOf(message.code), 1);
 					debugx.enabled && debugx('Message #%s', message.code);
 					finish();
-					if (++count >= total) {
+					if (++count >= TOTAL) {
 						handler.checkChain().then(function(info) {
 							assert.equal(info.messageCount, 0, 'Chain should be empty');
 							debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
@@ -115,7 +111,7 @@ describe('rabbitmq-handler:', function() {
 				debugx.enabled && debugx('exhaust() - error');
 				done(err);
 			})
-			this.timeout(10000000 + total*timeout*3);
+			this.timeout(10000000 + TOTAL*TIMEOUT*3);
 		});
 	});
 });

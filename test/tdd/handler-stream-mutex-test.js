@@ -17,9 +17,9 @@ var Loadsync = require('loadsync');
 describe('handler-stream-mutex:', function() {
 
 	describe('stream/produce with mutex:', function() {
-		var FIELD_NUM = 10000;
-		var CONST_TOTAL = 100;
-		var CONST_TIMEOUT = 0;
+		var FIELDS = bogen.FIELDS || 10000;
+		var TOTAL = bogen.TOTAL || 100;
+		var TIMEOUT = bogen.TIMEOUT || 0;
 		var handler;
 
 		before(function() {
@@ -43,12 +43,10 @@ describe('handler-stream-mutex:', function() {
 		});
 
 		it('prevent publish any message to pumping mutex stream', function(done) {
-			var timeout = CONST_TIMEOUT;
-			var total = CONST_TOTAL;
 			var count = 0;
-			var check = lodash.range(total);
-			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, max: total, timeout: timeout});
-			var bo9 = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, min: total, max: total+1, timeout: 0});
+			var check = lodash.range(TOTAL);
+			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELDS, max: TOTAL, timeout: TIMEOUT});
+			var bo9 = new bogen.BigObjectGenerator({numberOfFields: FIELDS, min: TOTAL, max: TOTAL+1, timeout: 0});
 			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				if (message) {
@@ -56,7 +54,7 @@ describe('handler-stream-mutex:', function() {
 					assert.equal(message.code, count);
 					check.splice(check.indexOf(message.code), 1);
 					finish();
-					if (++count >= (total + 1)) {
+					if (++count >= (TOTAL + 1)) {
 						handler.checkChain().then(function(info) {
 							assert.equal(info.messageCount, 0, 'Chain should be empty');
 							debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
@@ -75,7 +73,7 @@ describe('handler-stream-mutex:', function() {
 							debugx.enabled && debugx('produce() - data inserted');
 						});
 					});
-				}, Math.round(CONST_TIMEOUT * CONST_TOTAL / 2));
+				}, Math.round(TIMEOUT * TOTAL / 2));
 				debugx.enabled && debugx('exhaust() - start');
 				return handler.exhaust(bos);
 			}).then(function() {
@@ -84,16 +82,14 @@ describe('handler-stream-mutex:', function() {
 				debugx.enabled && debugx('exhaust() - error');
 				done(err);
 			})
-			this.timeout(10000000 + total*timeout*3);
+			this.timeout(10000000 + TOTAL*TIMEOUT*3);
 		});
 
 		it('two exclusive mutex streams', function(done) {
-			var timeout = CONST_TIMEOUT;
-			var total = CONST_TOTAL;
 			var count = 0;
-			var check = lodash.range(2*total);
-			var bog1 = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, max: total, timeout: timeout});
-			var bog2 = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, min: total, max: 2*total, timeout: 0});
+			var check = lodash.range(2*TOTAL);
+			var bog1 = new bogen.BigObjectGenerator({numberOfFields: FIELDS, max: TOTAL, timeout: TIMEOUT});
+			var bog2 = new bogen.BigObjectGenerator({numberOfFields: FIELDS, min: TOTAL, max: 2*TOTAL, timeout: 0});
 			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				if (message) {
@@ -101,7 +97,7 @@ describe('handler-stream-mutex:', function() {
 					check.splice(check.indexOf(message.code), 1);
 					debugx.enabled && debugx('Message #%s', message.code);
 					finish();
-					if (++count >= (2*total)) {
+					if (++count >= (2*TOTAL)) {
 						handler.checkChain().then(function(info) {
 							assert.equal(info.messageCount, 0, 'Chain should be empty');
 							debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
@@ -125,14 +121,14 @@ describe('handler-stream-mutex:', function() {
 				debugx.enabled && debugx('exhaust() - error');
 				done(err);
 			})
-			this.timeout(10000000 + total*timeout*3);
+			this.timeout(10000000 + TOTAL*TIMEOUT*3);
 		});
 	});
 
 	describe('stream/produce without mutex:', function() {
-		var FIELD_NUM = 10000;
-		var CONST_TOTAL = 20;
-		var CONST_TIMEOUT = 0;
+		var FIELDS = bogen.FIELDS || 10000;
+		var TOTAL = bogen.TOTAL || 20;
+		var TIMEOUT = bogen.TIMEOUT || 0;
 		var handler;
 
 		before(function() {
@@ -156,13 +152,11 @@ describe('handler-stream-mutex:', function() {
 		});
 
 		it('some messages is inserted to stream if mutex is not enabled', function(done) {
-			var timeout = CONST_TIMEOUT;
-			var total = CONST_TOTAL;
 			var count = 0;
-			var check = lodash.range(total);
+			var check = lodash.range(TOTAL);
 			var successive = true;
-			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, max: total, timeout: timeout});
-			var bo9 = new bogen.BigObjectGenerator({numberOfFields: FIELD_NUM, min: total, max: total+1, timeout: 0});
+			var bog = new bogen.BigObjectGenerator({numberOfFields: FIELDS, max: TOTAL, timeout: TIMEOUT});
+			var bo9 = new bogen.BigObjectGenerator({numberOfFields: FIELDS, min: TOTAL, max: TOTAL+1, timeout: 0});
 			var ok = handler.consume(function(message, info, finish) {
 				message = JSON.parse(message);
 				if (message) {
@@ -170,7 +164,7 @@ describe('handler-stream-mutex:', function() {
 					check.splice(check.indexOf(message.code), 1);
 					debugx.enabled && debugx('Message #%s', message.code);
 					finish();
-					if (++count >= (total + 1)) {
+					if (++count >= (TOTAL + 1)) {
 						handler.checkChain().then(function(info) {
 							assert.equal(successive, false);
 							assert.equal(info.messageCount, 0, 'Chain should be empty');
@@ -190,7 +184,7 @@ describe('handler-stream-mutex:', function() {
 							debugx.enabled && debugx('produce() - data inserted');
 						});
 					});
-				}, Math.round(CONST_TIMEOUT * CONST_TOTAL / 2));
+				}, Math.round(TIMEOUT * TOTAL / 2));
 				debugx.enabled && debugx('exhaust() - start');
 				return handler.exhaust(bos);
 			}).then(function() {
@@ -199,7 +193,7 @@ describe('handler-stream-mutex:', function() {
 				debugx.enabled && debugx('exhaust() - error');
 				done(err);
 			})
-			this.timeout(10000000 + total*timeout*3);
+			this.timeout(10000000 + TOTAL*TIMEOUT*3);
 		});
 	});
 });
