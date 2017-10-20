@@ -3,7 +3,7 @@ module.exports = {
     rabbitmqWrapper: {
       rabbitmq: {
         amqplib: {
-          host: 'amqp://master:zaq123edcx@192.168.56.56',
+          host: process.env.OPFLOW_TDD_URI || 'amqp://master:zaq123edcx@opflow-broker-default?frameMax=0x1000',
           exchangeType: 'direct',
           exchange: 'sample-exchange',
           routingKey: 'sample',
@@ -25,7 +25,7 @@ module.exports = {
     rabbitmqExporter: {
       rabbitmq: {
         amqplib: {
-          host: 'amqp://master:zaq123edcx@192.168.56.56',
+          host: process.env.OPFLOW_TDD_URI || 'amqp://master:zaq123edcx@opflow-broker-default?frameMax=0x1000',
           exchangeType: 'direct',
           exchange: 'sample-export-exchange',
           routingKey: 'sample-export',
