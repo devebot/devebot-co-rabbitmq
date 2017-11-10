@@ -5,22 +5,16 @@ var util = require('util');
 var Devebot = require('devebot');
 var Promise = Devebot.require('bluebird');
 var lodash = Devebot.require('lodash');
-var debug = Devebot.require('debug');
-var debuglog = debug('devebot:co:rabbitmq:example');
+var debugx = Devebot.require('debug')('devebot:co:rabbitmq:example');
 
 var Service = function(params) {
-  debuglog.isEnabled && debuglog(' + constructor begin ...');
+  debugx.enabled && debugx(' + constructor begin ...');
 
   params = params || {};
 
   var self = this;
-
-  self.logger = params.loggingFactory.getLogger();
-
-  debuglog.isEnabled && debuglog(' - NOTICE: This is a testing program');
-
+  var logger = params.loggingFactory.getLogger();
   var exporter = params.rabbitmqExporter.open();
-
   var handler = params.rabbitmqWrapper.open();
 
   var count = 0;
@@ -57,28 +51,13 @@ var Service = function(params) {
     });
   }, 7000);
 
-  debuglog.isEnabled && debuglog(' - constructor end!');
+  debugx.enabled && debugx(' - constructor end!');
 };
 
 Service.argumentSchema = {
   "id": "rabbitmqExample",
   "type": "object",
   "properties": {
-    "sandboxName": {
-      "type": "string"
-    },
-    "sandboxConfig": {
-      "type": "object"
-    },
-    "profileConfig": {
-      "type": "object"
-    },
-    "generalConfig": {
-      "type": "object"
-    },
-    "loggingFactory": {
-      "type": "object"
-    },
     "rabbitmqWrapper": {
       "type": "object"
     },

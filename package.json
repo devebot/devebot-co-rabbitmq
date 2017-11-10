@@ -1,6 +1,6 @@
 {
   "name": "devebot-co-rabbitmq",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Devebot - rabbitmq bridge",
   "main": "index.js",
   "scripts": {
@@ -21,11 +21,11 @@
   },
   "homepage": "https://github.com/devebot/devebot-co-rabbitmq#readme",
   "peerDependencies": {
-    "devebot": "^0.1.23"
+    "devebot": "^0.2.2"
   },
   "dependencies": {
     "amqplib": "^0.5.1",
-    "devebot": "^0.1.23",
+    "devebot": "^0.2.2",
     "locks": "^0.2.2"
   },
   "devDependencies": {
