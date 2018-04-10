@@ -9,7 +9,7 @@ var lodash = Devebot.require('lodash');
 var debug = Devebot.require('debug');
 var debuglog = debug('devebot:co:rabbitmq:test:benchmark');
 var Benchmark = require('benchmark');
-var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
+var RabbitmqHandler = require('../../lib/bridges/handler');
 var appCfg = require('../tdd/app-configuration');
 
 const t = require('exectimer');

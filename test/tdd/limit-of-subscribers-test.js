@@ -6,8 +6,8 @@ var lodash = Devebot.require('lodash');
 var assert = require('chai').assert;
 var expect = require('chai').expect;
 var util = require('util');
-var debugx = require('debug')('devebot:co:rabbitmq:rabbitmqHandler:test');
-var RabbitmqHandler = require('../../lib/bridges/rabbitmq-handler');
+var debugx = require('debug')('devebot:co:rabbitmq:handler:test');
+var RabbitmqHandler = require('../../lib/handler');
 var appCfg = require('./app-configuration');
 var Loadsync = require('loadsync');
 

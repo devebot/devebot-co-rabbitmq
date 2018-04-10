@@ -1,1 +1,1 @@
-module.exports = require('./lib/bridges/rabbitmq-bridge.js');
+module.exports = require('./lib/bridge.js');
