@@ -4,6 +4,7 @@ var baseCfg = {
 	uri: process.env.OPFLOW_TDD_URI || 'amqp://master:zaq123edcx@opflow-broker-default?frameMax=0x1000',
 	exchangeType: 'direct',
 	exchangeName: 'tdd-recoverable-exchange',
+	exchangeQuota: 16,
 	routingKey: 'tdd-recoverable',
 	consumer: {
 		queueName: 'tdd-recoverable-queue',
