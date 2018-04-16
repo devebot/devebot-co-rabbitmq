@@ -69,7 +69,7 @@ suite.add('Publisher', {
 });
 
 handler.ready().then(function() {
-	return handler.purgeChain();
+	return handler.purgeInbox();
 }).then(function() {
 	suite.on('cycle', function(event) {
 		console.log(String(event.target));

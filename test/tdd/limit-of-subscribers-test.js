@@ -22,7 +22,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.ready(), handler.purgeChain()
+				handler.ready(), handler.purgeInbox()
 			]).then(function() {
 				done();
 			});
@@ -46,7 +46,7 @@ describe('rabbitmq-handler:', function() {
 					return result;
 				});
 			}).then(function() {
-				handler.checkChain().then(function(info) {
+				handler.checkInbox().then(function(info) {
 					assert.equal(info.consumerCount, total, 'no limit of consumers');
 					done();
 				});
@@ -67,7 +67,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.ready(), handler.purgeChain()
+				handler.ready(), handler.purgeInbox()
 			]).then(function() {
 				done();
 			});
@@ -93,7 +93,7 @@ describe('rabbitmq-handler:', function() {
 					return failure;
 				});
 			}).then(function() {
-				handler.checkChain().then(function(info) {
+				handler.checkInbox().then(function(info) {
 					assert.equal(info.consumerCount, limit, 'limit of consumers to ' + limit);
 					done();
 				});
@@ -116,7 +116,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.ready(), handler.purgeChain(), handler.purgeTrash()
+				handler.ready(), handler.purgeInbox(), handler.purgeTrash()
 			]).then(function() {
 				done();
 			});
@@ -164,7 +164,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.ready(), handler.purgeChain(), handler.purgeTrash()
+				handler.ready(), handler.purgeInbox(), handler.purgeTrash()
 			]).then(function() {
 				done();
 			});

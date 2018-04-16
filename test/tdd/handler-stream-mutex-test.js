@@ -30,7 +30,7 @@ describe('handler-stream-mutex:', function() {
 
 		beforeEach(function(done) {
 			handler.ready().then(function() {
-				return handler.purgeChain();
+				return handler.purgeInbox();
 			}).then(function() {
 				done();
 			});
@@ -55,8 +55,8 @@ describe('handler-stream-mutex:', function() {
 					check.splice(check.indexOf(message.code), 1);
 					finish();
 					if (++count >= (TOTAL + 1)) {
-						handler.checkChain().then(function(info) {
-							assert.equal(info.messageCount, 0, 'Chain should be empty');
+						handler.checkInbox().then(function(info) {
+							assert.equal(info.messageCount, 0, 'Inbox should be empty');
 							debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
 							done();
 						});
@@ -98,8 +98,8 @@ describe('handler-stream-mutex:', function() {
 					debugx.enabled && debugx('Message #%s', message.code);
 					finish();
 					if (++count >= (2*TOTAL)) {
-						handler.checkChain().then(function(info) {
-							assert.equal(info.messageCount, 0, 'Chain should be empty');
+						handler.checkInbox().then(function(info) {
+							assert.equal(info.messageCount, 0, 'Inbox should be empty');
 							debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
 							done();
 						});
@@ -139,7 +139,7 @@ describe('handler-stream-mutex:', function() {
 
 		beforeEach(function(done) {
 			handler.ready().then(function() {
-				return handler.purgeChain();
+				return handler.purgeInbox();
 			}).then(function() {
 				done();
 			});
@@ -165,9 +165,9 @@ describe('handler-stream-mutex:', function() {
 					debugx.enabled && debugx('Message #%s', message.code);
 					finish();
 					if (++count >= (TOTAL + 1)) {
-						handler.checkChain().then(function(info) {
+						handler.checkInbox().then(function(info) {
 							assert.equal(successive, false);
-							assert.equal(info.messageCount, 0, 'Chain should be empty');
+							assert.equal(info.messageCount, 0, 'Inbox should be empty');
 							debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
 							done();
 						});

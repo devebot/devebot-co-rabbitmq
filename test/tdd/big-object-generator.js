@@ -47,7 +47,7 @@ BigObjectStreamify.prototype._read = function() {
 	var self = this;
 	self.generator.next().then(function(obj) {
 		if (obj === null) {
-			self.emit('end');
+			self.push(null);
 		} else {
 			self.push(obj);
 		}

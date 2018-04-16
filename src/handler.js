@@ -1,19 +1,19 @@
 'use strict';
 
-var assert = require('assert');
-var Devebot = require('devebot');
-var Promise = Devebot.require('bluebird');
-var lodash = Devebot.require('lodash');
-var pinbug = Devebot.require('pinbug');
-var debugx = pinbug('devebot:co:rabbitmq:handler');
-var debug0 = pinbug('trace:devebot:co:rabbitmq:handler');
-var debug2 = pinbug('devebot:co:rabbitmq:handler:extract');
-var amqp = require('amqplib/callback_api');
-var locks = require('locks');
-var util = require('util');
-var Readable = require('stream').Readable;
-var Writable = require('stream').Writable;
-var zapper = require('./zapper');
+const assert = require('assert');
+const Devebot = require('devebot');
+const Promise = Devebot.require('bluebird');
+const lodash = Devebot.require('lodash');
+const pinbug = Devebot.require('pinbug');
+const debugx = pinbug('devebot:co:rabbitmq:handler');
+const debug0 = pinbug('trace:devebot:co:rabbitmq:handler');
+const debug2 = pinbug('devebot:co:rabbitmq:handler:extract');
+const amqp = require('amqplib/callback_api');
+const locks = require('locks');
+const util = require('util');
+const Readable = require('stream').Readable;
+const Writable = require('stream').Writable;
+const zapper = require('./zapper');
 
 var Handler = function(params) {
   debugx.enabled && debugx(' + constructor begin ...');
@@ -64,6 +64,9 @@ var Handler = function(params) {
   }
   if (!zapper.isBoolean(config.consumer.channelIsCached)) {
     config.consumer.channelIsCached = zapper.isBoolean(params.channelIsCached) ? params.channelIsCached : true;
+  }
+  if (!zapper.isBoolean(config.consumer.autoBinding)) {
+    config.consumer.autoBinding = true;
   }
   if (!zapper.isNumber(config.consumer.maxSubscribers)) {
     config.consumer.maxSubscribers = params.maxSubscribers;
@@ -125,12 +128,12 @@ let getConnection = function(kwargs) {
       store.connectionCount += 1;
       conn.on('close', function() {
         debugx.enabled && debugx('getConnection() - connection is closed');
-        store.connection = undefined;
+        delete store.connection;
         store.connectionCount--;
       });
       conn.on('error', function(err) {
         debugx.enabled && debugx('getConnection() - connection has error');
-        store.connection = undefined;
+        delete store.connection;
       });
       debugx.enabled && debugx('getConnection() - connection is created successfully');
       return (store.connection = conn);
@@ -142,6 +145,10 @@ let getConnection = function(kwargs) {
 
 let getChannel = function(kwargs) {
   let {store, config} = kwargs;
+  if (config.channelIsCached !== false && store.channel) {
+    debugx.enabled && debugx('getChannel() - channel has been available');
+    return Promise.resolve(store.channel);
+  }
   return getTicket(kwargs).then(function() {
     if (config.channelIsCached !== false && store.channel) {
       debugx.enabled && debugx('getChannel() - channel has been available');
@@ -154,12 +161,16 @@ let getChannel = function(kwargs) {
         return createChannel().then(function(ch) {
           ch.on('close', function() {
             debugx.enabled && debugx('getChannel() - channel is closed');
-            store.channel = undefined;
+            delete store.channel;
           });
           ch.on('error', function(err) {
             debugx.enabled && debugx('getChannel() - channel has error');
-            store.channel = undefined;
+            delete store.channel;
           });
+          ch.on('drain', function() {
+            debugx.enabled && debugx('getChannel() - channel has drained, open the valve');
+            store.valve && store.valve.set(true);
+          })
           debugx.enabled && debugx('getChannel() - channel is created successfully');
           return (store.channel = ch);
         }).catch(function(err) {
@@ -170,124 +181,166 @@ let getChannel = function(kwargs) {
   });
 }
 
-var assertExchange = function(ch) {
-  var self = this;
-  if (!self.config.exchangeName) return Promise.resolve();
-  if (self.store.exchangeAsserted) return Promise.resolve(self.store.exchangeAsserted);
-  var ch_assertExchange = Promise.promisify(ch.assertExchange, {context: ch});
-  return ch_assertExchange(self.config.exchangeName, self.config.exchangeType, {
-    durable: self.config.durable,
-    autoDelete: self.config.autoDelete
-  }).then(function(eok) {
-    self.store.exchangeAsserted = eok;
-    return eok;
-  });
-}
-
-var retrieveExchange = function(override) {
-  var self = this;
+let retrieveExchange = function(kwargs, override) {
+  let {config} = kwargs;
   override = override || {};
-  return getChannel(self).then(function(ch) {
-    var ok = assertExchange.call(self, ch);
+  return getChannel(kwargs).then(function(ch) {
+    let ok = assertExchange(kwargs, ch);
     return ok.then(function(eok) {
       return {
-        channel: ch,
-        exchangeName: self.config.exchangeName,
-        routingKey: override.routingKey || self.config.routingKey
+        exchangeName: eok.exchange || config.exchangeName,
+        routingKey: override.routingKey || config.routingKey
       };
     });
   });
 }
 
-var assertQueue = function(ch) {
-  var self = this;
-  return Promise.promisify(ch.assertQueue, {context: ch})(self.config.queueName, {
-    durable: self.config.durable,
-    exclusive: self.config.exclusive
+let assertExchange = function(kwargs, ch) {
+  let {store, config} = kwargs;
+  if (store.exchangeAsserted) return Promise.resolve(store.exchangeAsserted);
+  let ch_assertExchange = Promise.promisify(ch.assertExchange, {context: ch});
+  return ch_assertExchange(config.exchangeName, config.exchangeType, {
+    durable: config.durable,
+    autoDelete: config.autoDelete
+  }).then(function(eok) {
+    return (store.exchangeAsserted = eok);
+  });
+}
+
+let assertQueue = function(kwargs, ch) {
+  let {store, config} = kwargs;
+  return Promise.promisify(ch.assertQueue, {context: ch})(config.queueName, {
+    durable: config.durable,
+    exclusive: config.exclusive
   }).then(function(qok) {
-    self.config.queueName = self.config.queueName || qok.queue;
+    config.queueName = config.queueName || qok.queue;
     return qok;
   });
 }
 
-var checkQueue = function(ch) {
-  var self = this;
-  return Promise.promisify(ch.checkQueue, {context: ch})(self.config.queueName);
+let checkQueue = function(kwargs, ch) {
+  return Promise.promisify(ch.checkQueue, {context: ch})(kwargs.config.queueName);
 }
 
-var purgeQueue = function(ch) {
-  var self = this;
-  return Promise.promisify(ch.purgeQueue, {context: ch})(self.config.queueName);
+let purgeQueue = function(kwargs, ch) {
+  return Promise.promisify(ch.purgeQueue, {context: ch})(kwargs.config.queueName);
 }
 
-var sendToQueue = function(data, opts) {
-  var self = this;
+let sendToQueue = function(kwargs, data, opts) {
+  let {store, config} = kwargs;
   opts = opts || {};
-  var sendTo = function(ch) {
-    return new Promise(function(onResolved, onRejected) {
-      ch.sendToQueue(self.config.queueName, zapper.bufferify(data), opts, function(err, ok) {
-        if (err) {
-          onRejected(err);
-        } else {
-          ok = ok || {};
-          ok.drained = true;
-          onResolved(ok);
+  let sendTo = function() {
+    return getChannel(kwargs).then(function(ch) {
+      let connection = store.connection;
+      return new Promise(function(onResolved, onRejected) {
+        let unexpectedClosing = function() {
+          onRejected({ msg: 'Timeout exception' });
+        }
+        connection.on('error', unexpectedClosing);
+        try {
+          ch.sendToQueue(config.queueName, zapper.bufferify(data), opts, function(err, ok) {
+            connection.removeListener('close', unexpectedClosing);
+            if (err) {
+              onRejected(err);
+            } else {
+              ok = ok || {};
+              ok.drained = true;
+              onResolved(ok);
+            }
+          });
+        } catch(exception) {
+          connection.removeListener('close', unexpectedClosing);
+          onRejected(exception);
         }
       });
+    }).catch(function(err) {
+      debugx.enabled && debugx('sendToQueue() - sendTo() failed, recall ...');
+      store.connection = null;
+      store.channel = null;
+      return sendTo();
     });
   }
-  var sendToDone = function(sok) {
-    if (self.config.sendable !== false) {
-      debugx.enabled && debugx('%s() channel is writable, msg has been sent', self.name);
-    } else {
-      debugx.enabled && debugx('%s() channel is drained, flushed', self.name);
-    }
-    return (self.config.sendable = sok.drained);
-  };
-  debugx.enabled && debugx('%s() an object to rabbitmq queue', self.name);
-  return getChannel({ config: self.config, store: self.store }).then(function(ch) {
-    return assertQueue.call({ config: self.config }, ch).then(function() {
-      if (self.config.sendable !== false) {
-        debugx.enabled && debugx('%s() channel is writable, send now', self.name);
-        return sendTo(ch).then(sendToDone);
-      } else {
-        debugx.enabled && debugx('%s() channel is overflowed, waiting', self.name);
-        return new Promise(function(onResolved, onRejected) {
-          ch.once('drain', function() {
-            sendTo(ch).then(sendToDone).then(onResolved).catch(onRejected);
-          });
-        });
+  debugx.enabled && debugx('%s() an object to rabbitmq queue', kwargs.name);
+  return getChannel(kwargs).then(function(ch) {
+    return assertQueue(kwargs, ch).then(function() {
+      return sendTo();
+    });
+  });
+}
+
+let checkValve = function(ctx, whenConditionMet) {
+  let {store} = ctx;
+  if (store.valve) {
+    store.valve.wait(
+      function conditionTest(value) {
+        return value === true;
+      },
+      whenConditionMet
+    );
+  } else {
+    whenConditionMet();
+  }
+}
+
+let sendToExchange = function(ctx, data, opts, target) {
+  return getChannel(ctx).then(function(channel) {
+    return new Promise(function(onResolved, onRejected) {
+      let unexpectedClosing = function() {
+        onRejected({ msg: 'Timeout exception' });
       }
-      return self.config.sendable;
+      let connection = ctx.store.connection;
+      connection.on('error', unexpectedClosing);
+      try {
+        checkValve(ctx, function() {
+          let drained = channel.publish(target.exchangeName, target.routingKey, zapper.bufferify(data), opts, function(err, ok) {
+            connection.removeListener('close', unexpectedClosing);
+            if (err) {
+              onRejected(err);
+              debugx.enabled && debugx('sendToExchange() failed: %s', JSON.stringify(err));
+            } else {
+              ok = ok || {};
+              ok.drained = true;
+              onResolved(ok);
+              debugx.enabled && debugx('sendToExchange() is ok');
+            }
+          });
+          if (!drained) {
+            debugx.enabled && debugx('channel is overflowed, close the valve');
+            ctx.store.valve && ctx.store.valve.set(false);
+          }
+        });
+      } catch(exception) {
+        connection.removeListener('close', unexpectedClosing);
+        debugx.enabled && debugx('sendToExchange() throw exception: %s', JSON.stringify(exception));
+        onRejected(exception);
+      }
     });
+  }).catch(function(err) {
+    debugx.enabled && debugx('produce() - sendToExchange() failed, recall ...');
+    ctx.store.connection = null;
+    ctx.store.channel = null;
+    return sendToExchange(ctx, data, opts, target);
   });
 }
 
-Handler.prototype.ready = Handler.prototype.prepare = function() {
-  var self = this;
-  return getChannel({ config: self.config, store: getProducerState.call(self) }).then(function(ch) {
-    return assertExchange.call({ config: self.config, store: getProducerState.call(self) }, ch);
-  });
+let getProducerState = function(self) {
+  self = self || this;
+  self.producerState = self.producerState || {};
+  self.producerState.guard = self.producerState.guard || locks.createMutex();
+  self.producerState.valve = self.producerState.valve || locks.createCondVariable(true);
+  if (self.config.exchangeMutex) {
+    self.producerState.fence = self.producerState.fence || locks.createCondVariable(true);
+  }
+  if (self.config.exchangeQuota) {
+    self.producerState.quota = self.producerState.quota || locks.createSemaphore(self.config.exchangeQuota);
+  }
+  return (self.producerState);
 }
 
-var getProducerState = function() {
-  this.producerState = this.producerState || {};
-  if (!this.producerState.guard) {
-    this.producerState.guard = this.producerState.guard || locks.createMutex();
-  }
-  if (this.config.exchangeMutex && !this.producerState.fence) {
-    this.producerState.fence = this.producerState.fence || locks.createCondVariable(true);
-  }
-  if (this.config.exchangeQuota && !this.producerState.quota) {
-    this.producerState.quota = this.producerState.quota || locks.createSemaphore(this.config.exchangeQuota);
-  }
-  return (this.producerState);
-}
-
-var lockProducer = function() {
-  var self = this;
-  var producerState = getProducerState.call(self);
-  var ticket = Promise.resolve(producerState);
+let lockProducer = function(self) {
+  self = self || this;
+  let producerState = getProducerState(self);
+  let ticket = Promise.resolve(producerState);
   if (producerState.fence) {
     ticket = ticket.then(function(producerState) {
       return new Promise(function(onResolved, onRejected) {
@@ -316,148 +369,95 @@ var lockProducer = function() {
   return ticket;
 }
 
-var unlockProducer = function() {
-  var self = this;
-  var producerState = getProducerState.call(self);
+let unlockProducer = function(self) {
+  self = self || this;
+  let producerState = getProducerState(self);
   if (producerState.quota) {
     producerState.quota.signal();
   }
 }
 
+Handler.prototype.ready = Handler.prototype.prepare = function() {
+  let sandbox = { config: this.config, store: getProducerState(this) };
+  return getChannel(sandbox).then(function(ch) {
+    return assertExchange(sandbox, ch);
+  });
+}
+
 Handler.prototype.produce = function(data, opts, override) {
-  var self = this;
+  let self = this;
   opts = opts || {};
   debugx.enabled && debugx('produce() an object to rabbitmq');
-  return lockProducer.call(self).then(function(producerState) {
-    return retrieveExchange.call({ config: self.config, store: producerState }, override).then(function(ref) {
-      var sendTo = function() {
-        return getChannel({ config: self.config, store: producerState }).then(function(channel) {
-          var connection = producerState.connection;
-          return new Promise(function(onResolved, onRejected) {
-            var unexpectedClosing = function() {
-              onRejected({ msg: 'Timeout exception' });
-            }
-            connection.on('error', unexpectedClosing);
-            try {
-              channel.publish(ref.exchangeName, ref.routingKey, zapper.bufferify(data), opts, function(err, ok) {
-                connection.removeListener('close', unexpectedClosing);
-                if (err) {
-                  onRejected(err);
-                  debugx.enabled && debugx('sendTo() failed: %s', JSON.stringify(err));
-                } else {
-                  ok = ok || {};
-                  ok.drained = true;
-                  onResolved(ok);
-                  debugx.enabled && debugx('sendTo() is ok');
-                }
-              });
-            } catch(exception) {
-              connection.removeListener('close', unexpectedClosing);
-              debugx.enabled && debugx('sendTo() throw exception: %s', JSON.stringify(exception));
-              onRejected(exception);
-            }
-          });
-        }).catch(function(err) {
-          debugx.enabled && debugx('produce() - sendTo() failed, recall ...');
-          producerState.connection = null;
-          producerState.channel = null;
-          return sendTo();
-        });
-      }
-      var sendToDone = function(sok) {
-        if (self.config.sendable !== false) {
-          debugx.enabled && debugx('Producer channel is writable, msg has been sent');
-        } else {
-          debugx.enabled && debugx('Producer channel is drained, flushed');
-        }
-        return (self.config.sendable = sok.drained);
-      };
-      var doSend = function() {
-        if (self.config.sendable !== false) {
-          debugx.enabled && debugx('Producer channel is writable, send now');
-          return sendTo().then(sendToDone);
-        } else {
-          debugx.enabled && debugx('Producer channel is overflowed, waiting');
-          return new Promise(function(onResolved, onRejected) {
-            ref.channel.once('drain', function() {
-              sendTo().then(sendToDone).then(onResolved).catch(onRejected);
-            });
-          });
-        }
-      }
-      return doSend();
+  return lockProducer(self).then(function(producerState) {
+    let ctx = { config: self.config, store: producerState };
+    return retrieveExchange(ctx, override).then(function(ref) {
+      return sendToExchange(ctx, data, opts, ref);
     });
   }).finally(function() {
-    unlockProducer.call(self);
+    unlockProducer(self);
   });
 }
 
 Handler.prototype.enqueue = Handler.prototype.produce;
 Handler.prototype.publish = Handler.prototype.produce;
 
-var getPipelineState = function() {
-  this.pipelineState = this.pipelineState || getProducerState.call(this);
-  if (this.config.exchangeMutex && !this.pipelineState.mutex) {
-    this.pipelineState.mutex = this.pipelineState.mutex || locks.createMutex();
+let getPipelineState = function(self) {
+  self = self || this;
+  self.pipelineState = self.pipelineState || {};
+  self.pipelineState.guard = self.pipelineState.guard || locks.createMutex();
+  self.pipelineState.valve = self.pipelineState.valve || locks.createCondVariable(true);
+  if (self.config.exchangeMutex) {
+    self.pipelineState.mutex = self.pipelineState.mutex || locks.createMutex();
   }
-  return (this.pipelineState);
+  return (self.pipelineState);
 }
 
-var lockPipeline = function(override) {
-  var self = this;
-  var producerState = getProducerState.call(self);
-  var pipelineState = getPipelineState.call(self);
-  return retrieveExchange.call({ config: self.config, store: pipelineState }, override).then(function(ref) {
-    producerState.fence && producerState.fence.set(false);
+let lockPipeline = function(self) {
+  self = self || this;
+  let producerState = getProducerState(self);
+  if (producerState.fence) {
+    producerState.fence.set(false);
+  }
+  let pipelineState = getPipelineState(self);
+  return new Promise(function(onResolved, onRejected) {
     if (pipelineState.mutex) {
-      return new Promise(function(resolved, rejected) {
-        pipelineState.mutex.lock(function() {
-          resolved(ref);
-        });
+      pipelineState.mutex.lock(function() {
+        onResolved(pipelineState);
       });
+    } else {
+      onResolved(pipelineState);
     }
-    return ref;
   });
 }
 
-var unlockPipeline = function() {
-  var self = this;
-  var producerState = getProducerState.call(self);
-  var pipelineState = getPipelineState.call(self);
+let unlockPipeline = function(self) {
+  self = self || this;
+  let producerState = getProducerState(self);
+  let pipelineState = getPipelineState(self);
   producerState.fence && producerState.fence.set(true);
   pipelineState.mutex && pipelineState.mutex.unlock();
 }
 
-var SubscriberStream = function(ref, opts) {
-  Writable.call(this, {objectMode: true});
-  this._ctx = { count: 0, writable: true };
-  this._ref = ref || {};
-  this._opts = opts || {};
-}
+let ProducerStream = function(context, options, target) {
+  options = options || {};
+  Writable.call(this, {objectMode: (options.objectMode !== false)});
 
-util.inherits(SubscriberStream, Writable);
+  let count = 0;
+  this.count = function() {
+    return count;
+  }
 
-SubscriberStream.prototype._write = function(chunk, encoding, callback) {
-  var self = this;
-  if (self._ctx.writable) {
-    self._next(chunk, callback);
-  } else {
-    self._ref.channel.once('drain', function() {
-      self._next(chunk, callback);
+  this._write = function(chunk, encoding, callback) {
+    debug2.enabled && debug2('ProducerStream._write() - sending #%s', count + 1);
+    sendToExchange(context, chunk, options, target).then(function() {
+      count++;
+      debug2.enabled && debug2('ProducerStream._write() - #%s has been sent', count);
+      callback();
     });
   }
 }
 
-SubscriberStream.prototype._next = function(obj, callback) {
-  var self = this;
-  self._ctx.writable = this._ref.channel.publish(this._ref.exchangeName, this._ref.routingKey, zapper.bufferify(obj), this._opts);
-  debug2.enabled && debug2('exhaust() - #%s has been sent, next? %s', self._ctx.count++, self._ctx.writable);
-  callback();
-}
-
-SubscriberStream.prototype.count = function() {
-  return this._ctx.count;
-}
+util.inherits(ProducerStream, Writable);
 
 Handler.prototype.exhaust = function(stream, opts, override) {
   var self = this;
@@ -466,54 +466,58 @@ Handler.prototype.exhaust = function(stream, opts, override) {
   if (!(stream instanceof Readable)) return Promise.reject({
     message: '[source] is not a readable stream'
   });
-  return lockPipeline.call(self, override).then(function(ref) {
-    var subscriberStream = new SubscriberStream(ref, opts);
-    return new Promise(function(resolved, rejected) {
-      debug2.enabled && debug2('exhaust() - starting...');
-      subscriberStream.on('finish', function() {
-        debug2.enabled && debug2('exhaust() - stream end. Total: %s', subscriberStream.count());
-        resolved();
+  return lockPipeline(self).then(function(pipelineState) {
+    var ctx = { config: self.config, store: pipelineState };
+    return retrieveExchange(ctx, override).then(function(ref) {
+      var producerStream = new ProducerStream(ctx, opts, ref);
+      return new Promise(function(resolved, rejected) {
+        debug2.enabled && debug2('exhaust() - starting...');
+        producerStream.on('error', function(err) {
+          debug2.enabled && debug2('exhaust() - stream error: %s', JSON.stringify(err));
+          rejected(err);
+        });
+        producerStream.on('finish', function() {
+          debug2.enabled && debug2('exhaust() - stream end. Total: %s', producerStream.count());
+          resolved();
+        });
+        stream.pipe(producerStream, { end: true });
       });
-      subscriberStream.on('error', function(err) {
-        debug2.enabled && debug2('exhaust() - stream error: %s', JSON.stringify(err));
-        rejected(err);
-      });
-      stream.pipe(subscriberStream, { end: true });
     });
   }).then(function(result) {
     debug2.enabled && debug2('exhaust() - finish successfully');
-    unlockPipeline.call(self);
     return result;
   }).catch(function(error) {
     debug2.enabled && debug2('exhaust() - error occurred: %s', JSON.stringify(error));
-    unlockPipeline.call(self);
     return Promise.reject(error);
+  }).finally(function() {
+    unlockPipeline(self);
   });
 }
 
-var getConsumerState = function() {
-  return (this.consumerState = this.consumerState || {});
+var getConsumerState = function(self) {
+  self = self || this;
+  return (self.consumerState = self.consumerState || {});
 }
 
-Handler.prototype.checkChain = function() {
-  var vc = { config: this.config.consumer, store: getConsumerState.call(this) };
+var enqueueInbox = function(self, data, opts) {
+  var vc = { name: 'enqueueInbox', config: self.config.consumer, store: getConsumerState(self) };
+  return sendToQueue(vc, data, opts);
+}
+
+Handler.prototype.checkInbox = function() {
+  var vc = { config: this.config.consumer, store: getConsumerState(this) };
   return getChannel(vc).then(function(ch) {
-    return checkQueue.call({ config: vc.config }, ch);
+    return checkQueue(vc, ch);
   });
 }
 
-Handler.prototype.purgeChain = function() {
-  var vc = { config: this.config.consumer, store: getConsumerState.call(this) };
+Handler.prototype.purgeInbox = function() {
+  var vc = { config: this.config.consumer, store: getConsumerState(this) };
   return getChannel(vc).then(function(ch) {
-    return assertQueue.call({ config: vc.config }, ch).then(function() {
-      return purgeQueue.call({ config: vc.config }, ch);
+    return assertQueue(vc, ch).then(function() {
+      return purgeQueue(vc, ch);
     });
   });
-}
-
-var enqueueChain = function(data, opts) {
-  var vc = { name: 'enqueueChain', config: this.config.consumer, store: getConsumerState.call(this) };
-  return sendToQueue.call(vc, data, opts);
 }
 
 Handler.prototype.consume = function(callback) {
@@ -521,10 +525,10 @@ Handler.prototype.consume = function(callback) {
 
   assert.ok(zapper.isFunction(callback), 'callback should be a function');
 
-  var vc = { config: self.config.consumer, store: getConsumerState.call(this) };
+  var vc = { config: self.config.consumer, store: getConsumerState(this) };
   vc.store.count = vc.store.count || 0;
 
-  debugx.enabled && debugx('consume() - get an object from Chain');
+  debugx.enabled && debugx('consume() - subscribe the Inbox queue');
   return getChannel(vc).then(function(ch) {
 
     if (vc.config.prefetch && vc.config.prefetch >= 0) {
@@ -532,10 +536,10 @@ Handler.prototype.consume = function(callback) {
       ch.prefetch(vc.config.prefetch, true);
     }
 
-    var ok = assertExchange.call({ config: self.config, store: vc.store }, ch);
+    var ok = assertExchange({ config: self.config, store: vc.store }, ch);
 
     ok = ok.then(function() {
-      return assertQueue.call({ config: vc.config }, ch);
+      return assertQueue(vc, ch);
     });
 
     ok = ok.then(function(qok) {
@@ -557,6 +561,10 @@ Handler.prototype.consume = function(callback) {
         debugx.enabled && debugx('consume() - Error: %s', JSON.stringify(error));
         return Promise.reject(error);
       }
+      return qok;
+    });
+
+    ok = ok.then(function(qok) {
       var ch_consume = Promise.promisify(ch.consume, {context: ch});
       return ch_consume(qok.queue, function(msg) {
         vc.store.count++;
@@ -572,12 +580,12 @@ Handler.prototype.consume = function(callback) {
               var headers = msg.properties && msg.properties.headers || {};
               headers[rcfg.redeliveredCountName] = (headers[rcfg.redeliveredCountName] || 0) + 1;
               if (headers[rcfg.redeliveredCountName] <= rcfg.redeliveredLimit) {
-                debugx.enabled && debugx('consume() - enqueueChain message');
-                enqueueChain.call(self, msg.content.toString(), {headers: headers});
+                debugx.enabled && debugx('consume() - enqueueInbox message');
+                enqueueInbox(self, msg.content.toString(), {headers: headers});
               } else {
-                if (hasRecycler.call(self)) {
+                if (hasRecycler(self)) {
                   debugx.enabled && debugx('consume() - enqueueTrash message');
-                  enqueueTrash.call(self, msg.content.toString(), {headers: headers});
+                  enqueueTrash(self, msg.content.toString(), {headers: headers});
                 }
               }
               ch.nack(msg, false, false);
@@ -600,45 +608,48 @@ Handler.prototype.consume = function(callback) {
 
 Handler.prototype.process = Handler.prototype.consume;
 
-var getRecyclerState = function() {
-  return (this.recyclerState = this.recyclerState || {});
+let getRecyclerState = function(self) {
+  self = self || this;
+  return (self.recyclerState = self.recyclerState || {});
 }
 
-var hasRecycler = function() {
-  var recyclerCfg = this.config.recycler;
+let hasRecycler = function(self) {
+  self = self || this;
+  let recyclerCfg = self.config.recycler;
   return recyclerCfg && (recyclerCfg.enabled !== false);
 }
 
-var assertRecycler = function() {
-  var recyclerCfg = this.config.recycler;
+let assertRecycler = function(self) {
+  self = self || this;
+  let recyclerCfg = self.config.recycler;
   if (!recyclerCfg || (recyclerCfg.enabled === false)) return Promise.reject({
     message: 'The recycler is unavailable'
   });
-  return Promise.resolve({ config: recyclerCfg, store: getRecyclerState.call(this) });
+  return Promise.resolve({ config: recyclerCfg, store: getRecyclerState(self) });
+}
+
+let enqueueTrash = function(self, data, opts) {
+  return assertRecycler(self).then(function(vr) {
+    vr.name = 'enqueueTrash';
+    return sendToQueue(vr, data, opts);
+  });
 }
 
 Handler.prototype.checkTrash = function() {
-  return assertRecycler.call(this).then(function(vr) {
+  return assertRecycler(this).then(function(vr) {
     return getChannel(vr).then(function(ch) {
-      return checkQueue.call({ config: vr.config }, ch);
+      return checkQueue(vr, ch);
     });
   });
 }
 
 Handler.prototype.purgeTrash = function() {
-  return assertRecycler.call(this).then(function(vr) {
+  return assertRecycler(this).then(function(vr) {
     return getChannel(vr).then(function(ch) {
-      return assertQueue.call({ config: vr.config }, ch).then(function() {
-        return purgeQueue.call({ config: vr.config }, ch);
+      return assertQueue(vr, ch).then(function() {
+        return purgeQueue(vr, ch);
       });
     });
-  });
-}
-
-var enqueueTrash = function(data, opts) {
-  return assertRecycler.call(this).then(function(vr) {
-    vr.name = 'enqueueTrash';
-    return sendToQueue.call(vr, data, opts);
   });
 }
 
@@ -647,7 +658,7 @@ Handler.prototype.recycle = function(callback) {
 
   assert.ok(zapper.isFunction(callback), 'callback should be a function');
 
-  return assertRecycler.call(self).then(function(vr) {
+  return assertRecycler(self).then(function(vr) {
     vr.store.count = vr.store.count || 0;
 
     debugx.enabled && debugx('recycle() - get an object from Trash');
@@ -658,7 +669,7 @@ Handler.prototype.recycle = function(callback) {
         ch.prefetch(vr.config.prefetch, true);
       }
 
-      var ok = assertQueue.call({ config: vr.config }, ch).then(function(qok) {
+      var ok = assertQueue(vr, ch).then(function(qok) {
         debugx.enabled && debugx('recycle() - queue info: %s', JSON.stringify(qok));
         if (vr.config.maxSubscribers && vr.config.maxSubscribers <= qok.consumerCount) {
           var error = {
@@ -694,12 +705,12 @@ Handler.prototype.recycle = function(callback) {
   });
 }
 
-var examineGarbage = function() {
-  var self = this;
-  return assertRecycler.call(self).then(function(vr) {
+var examineGarbage = function(self) {
+  self = self || this;
+  return assertRecycler(self).then(function(vr) {
     if (vr.store.garbage) return vr.store.garbage;
     return getChannel(vr).then(function(ch) {
-      return assertQueue.call({ config: vr.config }, ch).then(function(qok) {
+      return assertQueue(vr, ch).then(function(qok) {
         return Promise.promisify(ch.get, {context: ch})(qok.queue, {});
       }).then(function(msgOrFalse) {
         debugx.enabled && debugx('examineGarbage() - msg: %s', JSON.stringify(msgOrFalse));
@@ -712,9 +723,9 @@ var examineGarbage = function() {
 
 var garbageAction = {};
 
-var discardGarbage = garbageAction['discard'] = function() {
-  var self = this;
-  return assertRecycler.call(self).then(function(vr) {
+var discardGarbage = garbageAction['discard'] = function(self) {
+  self = self || this;
+  return assertRecycler(self).then(function(vr) {
     if (!vr.store.garbage) return false;
     return getChannel(vr).then(function(ch) {
       debugx.enabled && debugx('discardGarbage() - nack()');
@@ -725,9 +736,9 @@ var discardGarbage = garbageAction['discard'] = function() {
   });
 }
 
-var restoreGarbage = garbageAction['restore'] = function() {
-  var self = this;
-  return assertRecycler.call(self).then(function(vr) {
+var restoreGarbage = garbageAction['restore'] = function(self) {
+  self = self || this;
+  return assertRecycler(self).then(function(vr) {
     if (!vr.store.garbage) return false;
     return getChannel(vr).then(function(ch) {
       debugx.enabled && debugx('restoreGarbage() - nack()');
@@ -738,13 +749,13 @@ var restoreGarbage = garbageAction['restore'] = function() {
   });
 }
 
-var recoverGarbage = garbageAction['recover'] = function() {
-  var self = this;
-  return assertRecycler.call(self).then(function(vr) {
+var recoverGarbage = garbageAction['recover'] = function(self) {
+  self = self || this;
+  return assertRecycler(self).then(function(vr) {
     if (!vr.store.garbage) return false;
     return getChannel(vr).then(function(ch) {
       var msg = vr.store.garbage;
-      return enqueueChain.call(self, msg.content.toString(), msg.properties).then(function(result) {
+      return enqueueInbox(self, msg.content.toString(), msg.properties).then(function(result) {
         debugx.enabled && debugx('recoverGarbage() - ack()');
         ch.ack(vr.store.garbage);
         vr.store.garbage = undefined;
@@ -754,13 +765,13 @@ var recoverGarbage = garbageAction['recover'] = function() {
   });
 }
 
-var requeueGarbage = garbageAction['requeue'] = function() {
-  var self = this;
-  return assertRecycler.call(self).then(function(vr) {
+var requeueGarbage = garbageAction['requeue'] = function(self) {
+  self = self || this;
+  return assertRecycler(self).then(function(vr) {
     if (!vr.store.garbage) return false;
     return getChannel(vr).then(function(ch) {
       var msg = vr.store.garbage;
-      return enqueueTrash.call(self, msg.content.toString(), msg.properties).then(function(result) {
+      return enqueueTrash(self, msg.content.toString(), msg.properties).then(function(result) {
         debugx.enabled && debugx('requeueGarbage() - ack()');
         ch.ack(vr.store.garbage);
         vr.store.garbage = undefined;
@@ -774,7 +785,7 @@ Handler.prototype.examine = function(callback) {
   var self = this;
   var result = { obtained: 0 };
   result.callback = zapper.isFunction(callback);
-  return examineGarbage.call(self).then(function(msg) {
+  return examineGarbage(self).then(function(msg) {
     if (msg) {
       result.obtained = 1;
       if (!result.callback) return result;
@@ -789,7 +800,7 @@ Handler.prototype.examine = function(callback) {
           }
           if (zapper.isFunction(garbageAction[action])) {
             result.nextAction = true;
-            garbageAction[action].call(self).then(function() {
+            garbageAction[action](self).then(function() {
               resolved(result);
             }).catch(function(err) {
               result.actionError = err;
@@ -810,18 +821,18 @@ Handler.prototype.examine = function(callback) {
 Handler.prototype.destroy = function() {
   var self = this;
   return Promise.resolve().then(function() {
-    return stopPublisher.call({store: getProducerState.call(self) });
+    return stopPublisher({store: getProducerState(self) });
   }).then(function() {
-    return stopPublisher.call({store: getPipelineState.call(self) });
+    return stopPublisher({store: getPipelineState(self) });
   }).then(function() {
-    return stopSubscriber.call({store: getConsumerState.call(self) });
+    return stopSubscriber({store: getConsumerState(self) });
   }).then(function() {
-    return stopSubscriber.call({store: getRecyclerState.call(self) });
+    return stopSubscriber({store: getRecyclerState(self) });
   });
 }
 
-var stopPublisher = function() {
-  var self = this;
+var stopPublisher = function(self) {
+  self = self || this;
   return Promise.resolve().then(function() {
     if (self.store.channel) {
       var ch_close = Promise.promisify(self.store.channel.close, {
@@ -849,8 +860,8 @@ var stopPublisher = function() {
   });
 }
 
-var stopSubscriber = function() {
-  var self = this;
+var stopSubscriber = function(self) {
+  self = self || this;
   return Promise.resolve().then(function() {
     if (self.store.consumerTag && self.store.channel) {
       debugx.enabled && debugx('destroy() has been invoked: %s', self.store.consumerTag);

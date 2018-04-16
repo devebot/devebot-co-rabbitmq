@@ -28,7 +28,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			handler.ready().then(function() {
-				return handler.purgeChain();
+				return handler.purgeInbox();
 			}).then(function() {
 				done();
 			});
@@ -51,8 +51,8 @@ describe('rabbitmq-handler:', function() {
 				debugx.enabled && debugx('Message #%s', message.code);
 				finish();
 				if (++count >= TOTAL) {
-					handler.checkChain().then(function(info) {
-						assert.equal(info.messageCount, 0, 'Chain should be empty');
+					handler.checkInbox().then(function(info) {
+						assert.equal(info.messageCount, 0, 'Inbox should be empty');
 						debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
 						!hasDone && done();
 						hasDone = true;
@@ -93,8 +93,8 @@ describe('rabbitmq-handler:', function() {
 					debugx.enabled && debugx('Message #%s', message.code);
 					finish();
 					if (++count >= TOTAL) {
-						handler.checkChain().then(function(info) {
-							assert.equal(info.messageCount, 0, 'Chain should be empty');
+						handler.checkInbox().then(function(info) {
+							assert.equal(info.messageCount, 0, 'Inbox should be empty');
 							debugx.enabled && debugx('Absent messages: ', JSON.stringify(check));
 							done();
 						});

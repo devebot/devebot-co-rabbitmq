@@ -10,6 +10,11 @@ var baseCfg = {
 		queueName: 'tdd-recoverable-queue',
 		durable: true,
 		noAck: false
+	},
+	recycler: {
+		queueName: 'tdd-recoverable-trash',
+		redeliveredCountName: 'redelivered-count',
+		redeliveredLimit: 3
 	}
 };
 

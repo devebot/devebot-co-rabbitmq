@@ -31,7 +31,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.ready(), handler.purgeChain(), handler.purgeTrash()
+				handler.ready(), handler.purgeInbox(), handler.purgeTrash()
 			]).then(function() {
 				done();
 			});
@@ -53,8 +53,8 @@ describe('rabbitmq-handler:', function() {
 				message = JSON.parse(message);
 				finish(codes.indexOf(message.code) < 0 ? undefined : 'error');
 				if (++index >= (total + 3*codes.length)) {
-					handler.checkChain().then(function(info) {
-						assert.equal(info.messageCount, 0, 'Chain should be empty');
+					handler.checkInbox().then(function(info) {
+						assert.equal(info.messageCount, 0, 'Inbox should be empty');
 						(hasDone++ === 0) && done();
 					});
 				}
@@ -80,8 +80,8 @@ describe('rabbitmq-handler:', function() {
 				message = JSON.parse(message);
 				finish(code1.indexOf(message.code) < 0 ? undefined : 'error');
 				if (++index >= (total + 3*code1.length)) {
-					handler.checkChain().then(function(info) {
-						assert.equal(info.messageCount, 0, 'Chain should be empty');
+					handler.checkInbox().then(function(info) {
+						assert.equal(info.messageCount, 0, 'Inbox should be empty');
 						loadsync.check('consume', 'testsync');
 					});
 				}
@@ -131,7 +131,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler.ready(), handler.purgeChain(), handler.purgeTrash()
+				handler.ready(), handler.purgeInbox(), handler.purgeTrash()
 			]).then(function() {
 				done();
 			});
@@ -158,16 +158,16 @@ describe('rabbitmq-handler:', function() {
 				finish(codes.indexOf(message.code) < 0 ? undefined : 'error');
 				++index;
 				if (index == (total + 3*codes.length)) {
-					handler.checkChain().then(function(info) {
-						assert.equal(info.messageCount, 0, 'Chain should be empty');
+					handler.checkInbox().then(function(info) {
+						assert.equal(info.messageCount, 0, 'Inbox should be empty');
 						loadsync.check('consume', 'testsync');
 					});
 				}
 				if (index > (total + 3*codes.length)) {
 					debugx.enabled && debugx('Recovery message: %s', JSON.stringify(message));
 					assert.equal(message.code, total);
-					handler.checkChain().then(function(info) {
-						assert.equal(info.messageCount, 0, 'Chain should be empty');
+					handler.checkInbox().then(function(info) {
+						assert.equal(info.messageCount, 0, 'Inbox should be empty');
 					});
 				}
 			}).then(function() {

@@ -30,7 +30,7 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			handler.ready().then(function() {
-				return handler.purgeChain();
+				return handler.purgeInbox();
 			}).then(function() {
 				done();
 			});
@@ -118,8 +118,8 @@ describe('rabbitmq-handler:', function() {
 
 		beforeEach(function(done) {
 			Promise.all([
-				handler0.ready(), handler0.purgeChain(),
-				handler1.ready(), handler1.purgeChain()
+				handler0.ready(), handler0.purgeInbox(),
+				handler1.ready(), handler1.purgeInbox()
 			]).then(function() {
 				done();
 			});
