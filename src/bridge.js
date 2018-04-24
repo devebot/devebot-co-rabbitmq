@@ -2,16 +2,14 @@
 
 var Devebot = require('devebot');
 var Promise = Devebot.require('bluebird');
+var lodash = Devebot.require('lodash');
 var debugx = Devebot.require('pinbug')('devebot:co:rabbitmq:bridge');
 var Handler = require('./handler');
-
-var noop = function() {};
 
 var Service = function(params) {
   debugx.enabled && debugx(' + constructor start ...');
 
   params = params || {};
-
   var handler = null;
 
   this.open = function(opts) {
