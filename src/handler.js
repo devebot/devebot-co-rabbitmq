@@ -86,6 +86,20 @@ let Handler = function(params) {
     }
   }
 
+  config.maxListeners = 20;
+  if (zapper.isPositiveInteger(params.maxListeners)) {
+    config.maxListeners = params.maxListeners;
+  }
+  if (config.inbox) {
+    config.inbox.maxListeners = config.inbox.maxListeners || config.maxListeners;
+  }
+  if (config.chain) {
+    config.chain.maxListeners = config.chain.maxListeners || config.maxListeners;
+  }
+  if (config.trash) {
+    config.trash.maxListeners = config.trash.maxListeners || config.maxListeners;
+  }
+
   debugx.enabled && debugx(' - configuration object: %s', JSON.stringify(config));
 
   Object.defineProperty(this, 'config', {
@@ -128,7 +142,9 @@ let getConnection = function(kwargs) {
     let amqp_connect = Promise.promisify(amqp.connect, {context: amqp});
     return amqp_connect(config.uri, {}).then(function(conn) {
       state.connectionCount += 1;
-      conn.setMaxListeners(20);
+      if (config.maxListeners > 0) {
+        conn.setMaxListeners(config.maxListeners);
+      }
       conn.on('close', function() {
         debugx.enabled && debugx('getConnection() - connection is closed');
         delete state.connection;
