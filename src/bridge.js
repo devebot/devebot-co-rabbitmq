@@ -3,7 +3,7 @@
 var Devebot = require('devebot');
 var Promise = Devebot.require('bluebird');
 var lodash = Devebot.require('lodash');
-var debugx = Devebot.require('pinbug')('devebot:co:rabbitmq:bridge');
+var debugx = Devebot.require('pinbug')('devebot-co-rabbitmq:bridge');
 var Handler = require('./handler');
 
 var Service = function(params) {

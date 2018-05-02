@@ -5,7 +5,7 @@ var util = require('util');
 var Devebot = require('devebot');
 var Promise = Devebot.require('bluebird');
 var lodash = Devebot.require('lodash');
-var debugx = Devebot.require('debug')('devebot:co:rabbitmq:example');
+var debugx = Devebot.require('pinbug')('devebot-co-rabbitmq:example');
 
 var Service = function(params) {
   debugx.enabled && debugx(' + constructor begin ...');
