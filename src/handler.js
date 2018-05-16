@@ -895,7 +895,7 @@ let recoverGarbage = garbageAction['recover'] = function(self) {
     if (!ctx.state.garbage) return false;
     return getChannel(ctx).then(function(ch) {
       let msg = ctx.state.garbage;
-      return enqueueInbox(self, msg.content.toString(), msg.properties).then(function(result) {
+      return enqueueInbox(self, msg.content, msg.properties).then(function(result) {
         debugx.enabled && debugx('recoverGarbage() - ack()');
         ch.ack(ctx.state.garbage);
         ctx.state.garbage = undefined;
@@ -911,7 +911,7 @@ let requeueGarbage = garbageAction['requeue'] = function(self) {
     if (!ctx.state.garbage) return false;
     return getChannel(ctx).then(function(ch) {
       let msg = ctx.state.garbage;
-      return enqueueTrash(self, msg.content.toString(), msg.properties).then(function(result) {
+      return enqueueTrash(self, msg.content, msg.properties).then(function(result) {
         debugx.enabled && debugx('requeueGarbage() - ack()');
         ch.ack(ctx.state.garbage);
         ctx.state.garbage = undefined;
