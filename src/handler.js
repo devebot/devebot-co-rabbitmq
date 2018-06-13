@@ -5,19 +5,17 @@ const Devebot = require('devebot');
 const Promise = Devebot.require('bluebird');
 const lodash = Devebot.require('lodash');
 const pinbug = Devebot.require('pinbug');
-const debugx = pinbug('devebot:co:rabbitmq:handler');
-const debug0 = pinbug('trace:devebot:co:rabbitmq:handler');
-const debug2 = pinbug('devebot:co:rabbitmq:handler:extract');
+const debugx = pinbug('devebot-co-rabbitmq:handler');
+const debug0 = pinbug('trace:devebot-co-rabbitmq:handler');
+const debug2 = pinbug('devebot-co-rabbitmq:handler:extract');
 const amqp = require('amqplib/callback_api');
-const locks = require('locks');
+const valvekit = require('valvekit');
 const util = require('util');
 const Readable = require('stream').Readable;
 const Writable = require('stream').Writable;
 const zapper = require('./zapper');
 
 function Handler(params) {
-  debugx.enabled && debugx(' + constructor begin ...');
-
   let self = this;
   let LX = this.logger || zapper.getLogger();
   let LT = this.tracer || zapper.getTracer();
@@ -37,11 +35,12 @@ function Handler(params) {
   if (zapper.isString(params.alternateExchange)) {
     config.alternateExchange = params.alternateExchange;
   }
-  config.routingKey = zapper.isString(params.routingKey) ? params.routingKey : '';
+  config.routingKey = zapper.isString(params.routingKey) ? params.routingKey : 'default-routing-key';
 
+  // "inbox" queue configuration
   let originalInbox = params.inbox || params.consumer;
-  config.inbox = { uri: config.uri };
   if (lodash.isObject(originalInbox)) {
+    config.inbox = { uri: config.uri };
     lodash.merge(config.inbox, originalInbox);
   }
 
@@ -73,6 +72,7 @@ function Handler(params) {
     config.inbox.maxSubscribers = params.maxSubscribers;
   }
 
+  // "trash" queue configuration
   let originalTrash = params.trash || params.recycler;
   if (lodash.isObject(originalTrash)) {
     config.trash = {
@@ -81,7 +81,7 @@ function Handler(params) {
       redeliveredLimit: 5,
     }
     lodash.merge(config.trash, originalTrash);
-    if (lodash.isEmpty(config.trash.queueName)) {
+    if (lodash.isEmpty(config.trash.queueName) && config.inbox && config.inbox.queueName) {
       config.trash.queueName = config.inbox.queueName + '-trashed';
     }
   }
@@ -106,8 +106,6 @@ function Handler(params) {
     get: function() { return config; },
     set: function(value) {}
   });
-
-  debugx.enabled && debugx(' - constructor end!');
 };
 
 let getTicket = function(kwargs) {
@@ -354,13 +352,13 @@ let sendToExchange = function(ctx, data, opts, target) {
 let getProducerState = function(self) {
   self = self || this;
   self.producerState = self.producerState || {};
-  self.producerState.guard = self.producerState.guard || locks.createMutex();
-  self.producerState.valve = self.producerState.valve || locks.createCondVariable(true);
+  self.producerState.guard = self.producerState.guard || valvekit.createMutex();
+  self.producerState.valve = self.producerState.valve || valvekit.createBarrier(true);
   if (self.config.exchangeMutex) {
-    self.producerState.fence = self.producerState.fence || locks.createCondVariable(true);
+    self.producerState.fence = self.producerState.fence || valvekit.createBarrier(true);
   }
   if (self.config.exchangeQuota) {
-    self.producerState.quota = self.producerState.quota || locks.createSemaphore(self.config.exchangeQuota);
+    self.producerState.quota = self.producerState.quota || valvekit.createSemaphore(self.config.exchangeQuota);
   }
   return (self.producerState);
 }
@@ -386,7 +384,7 @@ let lockProducer = function(self) {
   if (producerState.quota) {
     ticket = ticket.then(function(producerState) {
       return new Promise(function(onResolved, onRejected) {
-        producerState.quota.wait(
+        producerState.quota.take(
           function whenResourceAvailable() {
             onResolved(producerState);
           }
@@ -401,7 +399,7 @@ let unlockProducer = function(self) {
   self = self || this;
   let producerState = getProducerState(self);
   if (producerState.quota) {
-    producerState.quota.signal();
+    producerState.quota.release();
   }
 }
 
@@ -461,10 +459,10 @@ Handler.prototype.publish = Handler.prototype.produce;
 let getPipelineState = function(self) {
   self = self || this;
   self.pipelineState = self.pipelineState || {};
-  self.pipelineState.guard = self.pipelineState.guard || locks.createMutex();
-  self.pipelineState.valve = self.pipelineState.valve || locks.createCondVariable(true);
+  self.pipelineState.guard = self.pipelineState.guard || valvekit.createMutex();
+  self.pipelineState.valve = self.pipelineState.valve || valvekit.createBarrier(true);
   if (self.config.exchangeMutex) {
-    self.pipelineState.mutex = self.pipelineState.mutex || locks.createMutex();
+    self.pipelineState.mutex = self.pipelineState.mutex || valvekit.createMutex();
   }
   return (self.pipelineState);
 }
@@ -554,7 +552,7 @@ Handler.prototype.exhaust = function(stream, opts, override) {
 let getInboxState = function(self) {
   self = self || this;
   self.inboxState = self.inboxState || {};
-  self.inboxState.valve = self.inboxState.valve || locks.createCondVariable(true);
+  self.inboxState.valve = self.inboxState.valve || valvekit.createBarrier(true);
   return self.inboxState;
 }
 
@@ -713,7 +711,7 @@ Handler.prototype.process = Handler.prototype.consume;
 let getChainState = function(self) {
   self = self || this;
   self.chainState = self.chainState || {};
-  self.chainState.valve = self.chainState.valve || locks.createCondVariable(true);
+  self.chainState.valve = self.chainState.valve || valvekit.createBarrier(true);
   return self.chainState;
 }
 
@@ -755,7 +753,7 @@ Handler.prototype.purgeChain = function() {
 let getTrashState = function(self) {
   self = self || this;
   self.trashState = self.trashState || {};
-  self.trashState.valve = self.trashState.valve || locks.createCondVariable(true);
+  self.trashState.valve = self.trashState.valve || valvekit.createBarrier(true);
   return self.trashState;
 }
 

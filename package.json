@@ -39,17 +39,12 @@
   "dependencies": {
     "amqplib": "^0.5.1",
     "devebot": "^0.2.6",
-    "locks": "^0.2.2"
+    "valvekit": "^0.1.3"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-plugin-minify-mangle-names": "^0.4.0",
     "babel-preset-env": "^1.6.1",
-    "chai": "^3.5.0",
-    "cucumber": "^1.3.1",
-    "debug": "^2.6.8",
-    "faker": "^4.1.0",
-    "loadsync": "^0.1.7",
     "mocha": "^3.4.1"
   }
 }
