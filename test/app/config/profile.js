@@ -9,5 +9,13 @@ module.exports = {
         colorize: true
       }
     }
+  },
+  newFeatures: {
+    application: {
+      logoliteEnabled: true
+    },
+    rabbitmq: {
+      logoliteEnabled: true
+    }
   }
 };

@@ -15,7 +15,7 @@ const Readable = require('stream').Readable;
 const Writable = require('stream').Writable;
 const zapper = require('./zapper');
 
-let Handler = function(params) {
+function Handler(params) {
   debugx.enabled && debugx(' + constructor begin ...');
 
   let self = this;
@@ -67,7 +67,7 @@ let Handler = function(params) {
     config.inbox.channelIsCached = zapper.isBoolean(params.channelIsCached) ? params.channelIsCached : true;
   }
   if (!zapper.isBoolean(config.inbox.noBinding)) {
-    config.inbox.noBinding = false;
+    config.inbox.noBinding = zapper.isBoolean(params.noBinding) ? params.noBinding : false;;
   }
   if (!zapper.isNumber(config.inbox.maxSubscribers)) {
     config.inbox.maxSubscribers = params.maxSubscribers;
@@ -229,10 +229,18 @@ let assertExchange = function(kwargs, ch) {
 let assertQueue = function(kwargs, ch, forced) {
   let {state, config} = kwargs;
   if (!forced && state.queueAsserted) return Promise.resolve(state.queueAsserted);
-  return Promise.promisify(ch.assertQueue, {context: ch})(config.queueName, {
+  let options = {
     durable: config.durable,
-    exclusive: config.exclusive
-  }).then(function(qok) {
+    exclusive: config.exclusive,
+    autoDelete: config.autoDelete
+  }
+  if (zapper.isInteger(config.messageTtl) && config.messageTtl >= 0) options.messageTtl = config.messageTtl;
+  if (zapper.isPositiveInteger(config.expires)) options.expires = config.expires;
+  if (zapper.isPositiveInteger(config.maxLength)) options.maxLength = config.maxLength;
+  if (zapper.isPositiveInteger(config.maxPriority)) options.maxPriority = config.maxPriority;
+  if (zapper.isString(config.deadLetterExchange)) options.deadLetterExchange = config.deadLetterExchange;
+  if (zapper.isString(config.deadLetterRoutingKey)) options.deadLetterRoutingKey = config.deadLetterRoutingKey;
+  return Promise.promisify(ch.assertQueue, {context: ch})(config.queueName, options).then(function(qok) {
     return (state.queueAsserted = qok);
   });
 }

@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "amqplib": "^0.5.1",
-    "devebot": "^0.2.2",
+    "devebot": "^0.2.6",
     "locks": "^0.2.2"
   },
   "devDependencies": {

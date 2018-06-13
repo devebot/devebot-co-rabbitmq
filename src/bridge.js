@@ -6,7 +6,7 @@ var lodash = Devebot.require('lodash');
 var debugx = Devebot.require('pinbug')('devebot-co-rabbitmq:bridge');
 var Handler = require('./handler');
 
-var Service = function(params) {
+function Service(params) {
   debugx.enabled && debugx(' + constructor start ...');
 
   params = params || {};
