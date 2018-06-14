@@ -22,3 +22,5 @@ function Service(params) {
 };
 
 module.exports = Service;
+
+Service.devebotMetadata = require('./metadata');
