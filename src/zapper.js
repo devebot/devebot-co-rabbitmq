@@ -1,10 +1,10 @@
 'use strict';
 
-var Devebot = require('devebot');
-var lodash = Devebot.require('lodash');
-var logolite = Devebot.require('logolite');
-var Buffer = global.Buffer || require('buffer').Buffer;
-var misc = {};
+const Devebot = require('devebot');
+const lodash = Devebot.require('lodash');
+const logolite = Devebot.require('logolite');
+const Buffer = global.Buffer || require('buffer').Buffer;
+const misc = {};
 
 misc.isBoolean = function(val) {
   return (typeof val === 'boolean');

@@ -16,7 +16,6 @@ const Writable = require('stream').Writable;
 const zapper = require('./zapper');
 
 function Handler(params) {
-  let self = this;
   let LX = this.logger || zapper.getLogger();
   let LT = this.tracer || zapper.getTracer();
 
@@ -493,7 +492,7 @@ let unlockPipeline = function(self) {
   pipelineState.mutex && pipelineState.mutex.unlock();
 }
 
-let ProducerStream = function(context, options, target) {
+function ProducerStream(context, options, target) {
   options = options || {};
   Writable.call(this, {objectMode: (options.objectMode !== false)});
 
